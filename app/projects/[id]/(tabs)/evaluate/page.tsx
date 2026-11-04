@@ -29,6 +29,7 @@ import { ItemPanel, PromptPanel } from './context-panel'
 import { EvaluationForm } from './evaluation-form'
 import { QueueNav } from '@/app/components/ui/queue-nav'
 import { Alert } from '@/app/components/ui/alert'
+import { Card } from '@/app/components/ui/card'
 import { OpenLink } from '@/app/components/ui/open-link'
 import { EmptyState } from '@/app/components/ui/empty-state'
 import { Section } from '@/app/components/ui/section'
@@ -144,19 +145,17 @@ export default async function ProjectEvaluatePage({
 
   const route = `/projects/${id}/evaluate?response=`
   const evaluating = !waiting && response !== null && cells.length > 0
+  const navProps = {
+    prev: prev ? `${route}${prev}` : null,
+    next: next ? `${route}${next}` : null,
+    position: { current: position, total: progress.total },
+  }
 
   return (
     <Section
       title={roundNumber ? `Avaliar na rodada ${roundNumber}` : 'Avaliar respostas'}
-      action={
-        evaluating ? (
-          <QueueNav
-            prev={prev ? `${route}${prev}` : null}
-            next={next ? `${route}${next}` : null}
-            position={{ current: position, total: progress.total }}
-          />
-        ) : null
-      }
+      action={evaluating ? <QueueNav {...navProps} /> : null}
+      actionAlign="start"
     >
       {waiting ? (
         <div className="flex flex-col gap-3">
@@ -197,6 +196,11 @@ export default async function ProjectEvaluatePage({
             submitted={submitted}
             item={context ? <ItemPanel item={context.item} /> : null}
             prompt={context ? <PromptPanel prompt={context.prompt} /> : null}
+            footer={
+              <Card padding="sm">
+                <QueueNav {...navProps} spread />
+              </Card>
+            }
           />
         </div>
       )}

@@ -12,6 +12,7 @@ export function Section({
   help,
   more,
   action,
+  actionAlign = 'end',
   id,
   divider = true,
   className,
@@ -22,6 +23,7 @@ export function Section({
   help?: string
   more?: { summary?: string; points: readonly string[] }
   action?: React.ReactNode
+  actionAlign?: 'end' | 'start'
   id?: string
   divider?: boolean
   className?: string
@@ -43,7 +45,12 @@ export function Section({
       )}
     >
       {action ? (
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div
+          className={cx(
+            'flex flex-wrap items-center gap-x-4 gap-y-2',
+            actionAlign === 'end' && 'justify-between',
+          )}
+        >
           {heading}
           {action}
         </div>

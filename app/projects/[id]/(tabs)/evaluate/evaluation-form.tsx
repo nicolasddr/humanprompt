@@ -193,6 +193,7 @@ export function EvaluationForm({
   submitted,
   item,
   prompt,
+  footer,
 }: {
   projectId: string
   response: ResponseDetail
@@ -201,6 +202,7 @@ export function EvaluationForm({
   submitted: SubmittedEvaluation | null
   item?: React.ReactNode
   prompt?: React.ReactNode
+  footer?: React.ReactNode
 }) {
   const [state, action, pending] = useActionState(submitEvaluation, initialState)
   const [values, setValues] = useState(() => storedValues(submitted))
@@ -272,6 +274,7 @@ export function EvaluationForm({
             ))}
           </ul>
         </div>
+        {footer}
       </Columns>
     )
   }
@@ -374,6 +377,7 @@ export function EvaluationForm({
           </span>
         </FormActions>
       </Form>
+      {footer}
     </Columns>
   )
 }

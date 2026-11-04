@@ -832,7 +832,7 @@ describe('app/projects/[id]/evaluate — a tela do avaliador', () => {
     })
 
     const nav = navPropsOf(await render(scene.project, queue[2]))
-    expect(renderToStaticMarkup(createElement(QueueNav, nav))).toMatch(/>3 de 5</)
+    expect(renderToStaticMarkup(createElement(QueueNav, nav))).toMatch(/>Resposta 3 de 5</)
   })
 
   it('com uma resposta só, nenhum controle leva a lugar nenhum', async () => {
@@ -965,7 +965,7 @@ describe('app/projects/[id]/evaluate — a tela do avaliador', () => {
     expect(prompt).toBeLessThan(item)
     expect(item).toBeLessThan(response)
     expect(response).toBeLessThan(form)
-    expect(html).not.toContain('order-first')
+    expect(html.slice(0, form)).not.toContain('order-first')
   })
 
   it('o prompt, o item e a resposta usam o mesmo cartão, e a resposta não mostra data', async () => {
@@ -1032,7 +1032,7 @@ describe('app/projects/[id]/evaluate — a tela do avaliador', () => {
     expect(textOf(tree)).not.toContain('Avaliando como')
   })
 
-  it('anterior e próxima ficam na linha do título', async () => {
+  it('anterior e próxima ficam encostadas no título e repetidas no fim do formulário', async () => {
     const admin = await newUser('Admin')
     const scene = await scenario(admin, { responses: 2 })
     const evaluator = await newEvaluator(scene.project)
@@ -1040,8 +1040,14 @@ describe('app/projects/[id]/evaluate — a tela do avaliador', () => {
     auth.userId = evaluator
     const tree = await open(scene.project)
 
-    expect(findElement(sectionOf(tree).action, QueueNav)).toBeTruthy()
-    expect(findElement(sectionOf(tree).children, QueueNav)).toBeNull()
+    const top = findElement(sectionOf(tree).action, QueueNav)
+    expect(top).toBeTruthy()
+    expect(sectionOf(tree).actionAlign).toBe('start')
+
+    const bottom = findElement(formOf(tree).footer, QueueNav)
+    expect(bottom).toBeTruthy()
+    const { prev, next, position } = top!.props as NavProps
+    expect(bottom!.props).toMatchObject({ prev, next, position })
   })
 
   it('o rótulo "Resposta N" aparece uma vez, no cabeçalho da resposta, também no modo leitura', async () => {
@@ -1050,9 +1056,11 @@ describe('app/projects/[id]/evaluate — a tela do avaliador', () => {
     const evaluator = await newEvaluator(scene.project)
 
     function occurrences(tree: unknown): number {
-      return renderToStaticMarkup(createElement(Fragment, null, tree as ReactElement)).split(
-        'Resposta 1',
-      ).length - 1
+      return (
+        renderToStaticMarkup(createElement(Fragment, null, tree as ReactElement)).match(
+          /Resposta 1(?! de )/g,
+        ) ?? []
+      ).length
     }
 
     auth.userId = evaluator
