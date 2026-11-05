@@ -48,7 +48,7 @@ export function AgreementCell({ cell }: { cell: MatrixCell }) {
   )
 }
 
-function AgreementPair({
+export function AgreementPair({
   cell,
   withoutOutliers,
 }: {
@@ -77,7 +77,7 @@ function Divergence({ cell }: { cell: MatrixCell }) {
   return <DivergenceBar profile={cell.profile} />
 }
 
-function DivergencePair({
+export function DivergencePair({
   cell,
   withoutOutliers,
 }: {

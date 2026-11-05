@@ -3071,7 +3071,15 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     )
     expect(table).not.toContain('avaliadores')
     expect(agreementSectionTextOf(tree)).not.toContain(ROUND_8_ALPHA.pooled)
-    expect(visibleTextOf(byDefinitionOf(tree))).toContain(MATRIX_OUTLIERS_NOTE)
+    expect(visibleTextOf(byDefinitionOf(tree))).not.toContain(MATRIX_OUTLIERS_NOTE)
+    expect(visibleTextOf(CriterionByDefinitionTable(byDefinitionTableOf(tree)))).toMatch(
+      new RegExp(
+        `${AGREEMENT_ALL_LABEL} -?\\d,\\d{3} ` +
+          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} (-?\\d,\\d{3}|[a-zà-ú ]+) ` +
+          `${AGREEMENT_ALL_LABEL} [\\d,]+% [\\d,]+% [\\d,]+% ` +
+          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`,
+      ),
+    )
   })
 
   it('na cena da rodada 8, o aviso de amostra e as avaliações por avaliador continuam na Concordância', async () => {

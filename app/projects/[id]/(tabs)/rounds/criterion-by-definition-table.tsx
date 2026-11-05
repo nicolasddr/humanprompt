@@ -6,10 +6,10 @@ import type {
 import { isPerResponse } from '../../pipeline/criteria'
 import type { RoundObservation } from './agreement'
 import { agreementMatrix } from './agreement-matrix'
+import { withoutExcluded } from './agreement-pair'
 import { notApplicableNote } from './agreement-labels'
-import { AgreementCell } from './criterion-agreement-table'
+import { AgreementPair, DivergencePair } from './criterion-agreement-table'
 import { DIVERGENCE_BAR_HEADER } from './divergence'
-import { DivergenceBar } from './divergence-bar'
 
 const headerClass =
   'border-b border-line px-3 py-2 text-left align-bottom text-[11px] font-semibold ' +
@@ -22,19 +22,35 @@ export function CriterionByDefinitionTable({
   criteria,
   observations,
   columnKey,
+  excluded,
 }: {
   definitions: CodebookDefinition[]
   criteria: CodebookCriterion[]
   observations: RoundObservation[]
   columnKey: string
+  excluded: ReadonlySet<string>
 }) {
   const byDefinition = criteria.filter((criterion) => !isPerResponse(criterion))
-  const rows = agreementMatrix(definitions, byDefinition, observations).flatMap(
-    ({ definition, cells }) => {
+  const columnOf = (group: readonly RoundObservation[]) =>
+    agreementMatrix(definitions, byDefinition, group).flatMap(({ definition, cells }) => {
       const entry = cells.find(({ column }) => column.key === columnKey)
       return definition && entry ? [{ definition, ...entry }] : []
-    },
-  )
+    })
+  const filtered =
+    excluded.size > 0
+      ? new Map(
+          columnOf(withoutExcluded(observations, excluded)).map(({ definition, cell }) => [
+            definition.id,
+            cell,
+          ]),
+        )
+      : null
+  const rows = columnOf(observations).map((row) => ({
+    ...row,
+    withoutOutliers: filtered
+      ? (filtered.get(row.definition.id) ?? ({ state: 'unrated' } as const))
+      : null,
+  }))
   const applicable = rows.filter(({ cell }) => cell.state !== 'not_applicable')
   const notApplicable = rows.length - applicable.length
 
@@ -57,7 +73,7 @@ export function CriterionByDefinitionTable({
             </tr>
           </thead>
           <tbody>
-            {applicable.map(({ definition, cell }) => (
+            {applicable.map(({ definition, cell, withoutOutliers }) => (
               <tr key={definition.id}>
                 <th
                   scope="row"
@@ -66,12 +82,10 @@ export function CriterionByDefinitionTable({
                   {definition.title}
                 </th>
                 <td className={cx(cellClass, 'text-right')}>
-                  <AgreementCell cell={cell} />
+                  <AgreementPair cell={cell} withoutOutliers={withoutOutliers} />
                 </td>
                 <td className={cellClass}>
-                  {cell.state === 'calculated' && cell.profile ? (
-                    <DivergenceBar profile={cell.profile} />
-                  ) : null}
+                  <DivergencePair cell={cell} withoutOutliers={withoutOutliers} />
                 </td>
                 <td className="border-b border-line" />
               </tr>

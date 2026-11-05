@@ -9,6 +9,7 @@ import { AgreementMatrixTable } from './agreement-matrix-table'
 import {
   ALL_CRITERIA_TAB,
   CELL_UNRATED_LABEL,
+  MATRIX_OUTLIERS_NOTE,
   cellNotCalculableLabel,
   formatAlpha,
 } from './agreement-labels'
@@ -30,6 +31,7 @@ export function agreementByDefinition({
   codebookVersionNumber,
   criterion,
   href,
+  excluded,
 }: {
   definitions: CodebookDefinition[]
   criteria: CodebookCriterion[]
@@ -37,6 +39,7 @@ export function agreementByDefinition({
   codebookVersionNumber: number
   criterion: string | null
   href: string
+  excluded: ReadonlySet<string>
 }) {
   const columns = matrixColumns(definitions, criteria).filter(
     (column) => !column.isPerResponse,
@@ -49,6 +52,7 @@ export function agreementByDefinition({
         criteria={criteria}
         observations={observations}
         columnKey={columns[0].key}
+        excluded={excluded}
       />
     )
   }
@@ -87,15 +91,21 @@ export function agreementByDefinition({
           criteria={criteria}
           observations={observations}
           columnKey={active.key}
+          excluded={excluded}
         />
       ) : (
-        <AgreementMatrixTable
-          definitions={definitions}
-          criteria={criteria}
-          observations={observations}
-          codebookVersionNumber={codebookVersionNumber}
-          href={href}
-        />
+        <>
+          <AgreementMatrixTable
+            definitions={definitions}
+            criteria={criteria}
+            observations={observations}
+            codebookVersionNumber={codebookVersionNumber}
+            href={href}
+          />
+          {excluded.size > 0 ? (
+            <p className="m-0 text-xs text-muted">{MATRIX_OUTLIERS_NOTE}</p>
+          ) : null}
+        </>
       )}
     </>
   )

@@ -10,7 +10,6 @@ import { AgreementMatrixTable } from './agreement-matrix-table'
 import { agreementByDefinition } from './agreement-by-definition'
 import { matrixColumns } from './agreement-matrix'
 import {
-  MATRIX_OUTLIERS_NOTE,
   byDefinitionSummary,
   matrixPerResponseNote,
 } from './agreement-labels'
@@ -106,14 +105,12 @@ export function roundAgreementSection({
                   codebookVersionNumber: round.codebookVersionNumber,
                   criterion: criterion ?? null,
                   href,
+                  excluded,
                 })}
                 {perResponseNames.length > 0 ? (
                   <p className="m-0 text-xs text-muted">
                     {matrixPerResponseNote(perResponseNames)}
                   </p>
-                ) : null}
-                {excluded.size > 0 ? (
-                  <p className="m-0 text-xs text-muted">{MATRIX_OUTLIERS_NOTE}</p>
                 ) : null}
               </ByDefinition>
             ) : null}
