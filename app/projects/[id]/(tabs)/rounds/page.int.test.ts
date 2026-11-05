@@ -1922,7 +1922,8 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     })
     expect(visibleTextOf(CriterionAgreementTable(criterionTableOf(tree)))).toMatch(
       new RegExp(
-        `Clareza \\d+ notas ${AGREEMENT_ALL_LABEL} -?\\d,\\d{3} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL} 1,000 `,
+        `Clareza \\d+ notas ${AGREEMENT_ALL_LABEL} -?\\d,\\d{3} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL} 1,000 ` +
+          `${AGREEMENT_ALL_LABEL} [\\d,]+% [\\d,]+% [\\d,]+% ${AGREEMENT_WITHOUT_OUTLIERS_LABEL} 100% 0% 0%`,
       ),
     )
 
@@ -3044,7 +3045,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(sampleTextOf(tree)).not.toContain(ROUND_8_ALPHA.pooled)
   })
 
-  it('na cena da rodada 8 com um marcado, a coluna ICR mostra com todos e sem os marcados, e o resto da linha fica com todos', async () => {
+  it('na cena da rodada 8 com um marcado, a coluna ICR e a das notas iguais mostram com todos e sem os marcados', async () => {
     const admin = await newUser('Admin')
     const { scene } = await round8Scene(admin, { carla: true })
 
@@ -3055,13 +3056,17 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(table).toMatch(
       new RegExp(
         `Relevance Geral 50 notas ${AGREEMENT_ALL_LABEL} -?\\d,\\d{3} ` +
-          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} ${ROUND_8_ALPHA.relevance} \\d`,
+          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} ${ROUND_8_ALPHA.relevance} ` +
+          `${AGREEMENT_ALL_LABEL} [\\d,]+% [\\d,]+% [\\d,]+% ` +
+          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} [\\d,]+% [\\d,]+% [\\d,]+%`,
       ),
     )
     expect(table).toMatch(
       new RegExp(
         `Diversity ${PER_RESPONSE_LABEL} 10 notas ${AGREEMENT_ALL_LABEL} -?\\d,\\d{3} ` +
-          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} ${ROUND_8_ALPHA.diversity} \\d`,
+          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} ${ROUND_8_ALPHA.diversity} ` +
+          `${AGREEMENT_ALL_LABEL} [\\d,]+% [\\d,]+% [\\d,]+% ` +
+          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} [\\d,]+% [\\d,]+% [\\d,]+%`,
       ),
     )
     expect(table).not.toContain('avaliadores')

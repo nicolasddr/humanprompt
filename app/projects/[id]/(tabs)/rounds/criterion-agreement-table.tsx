@@ -77,6 +77,29 @@ function Divergence({ cell }: { cell: MatrixCell }) {
   return <DivergenceBar profile={cell.profile} />
 }
 
+function DivergencePair({
+  cell,
+  withoutOutliers,
+}: {
+  cell: MatrixCell
+  withoutOutliers: MatrixCell | null
+}) {
+  if (!withoutOutliers) return <Divergence cell={cell} />
+
+  return (
+    <span className="flex flex-col gap-1.5">
+      <span className="flex flex-col gap-0.5">
+        <span className="text-[11px] text-muted">{AGREEMENT_ALL_LABEL}</span>
+        <Divergence cell={cell} />
+      </span>
+      <span className="flex flex-col gap-0.5">
+        <span className="text-[11px] text-muted">{AGREEMENT_WITHOUT_OUTLIERS_LABEL}</span>
+        <Divergence cell={withoutOutliers} />
+      </span>
+    </span>
+  )
+}
+
 export function CriterionAgreementTable({
   definitions,
   criteria,
@@ -146,7 +169,7 @@ export function CriterionAgreementTable({
                     <AgreementPair cell={cell} withoutOutliers={withoutOutliers} />
                   </td>
                   <td className={cellClass}>
-                    <Divergence cell={cell} />
+                    <DivergencePair cell={cell} withoutOutliers={withoutOutliers} />
                   </td>
                   <td className="border-b border-line" />
                 </tr>
