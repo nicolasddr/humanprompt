@@ -17,12 +17,10 @@ import {
   bandLabel,
   bandTone,
   formatAlpha,
-  SAMPLE_ALL_LABEL,
-  SAMPLE_WITHOUT_OUTLIERS_LABEL,
   SMALL_SAMPLE_HELP,
-  SMALL_SAMPLE_LABEL,
-  isSmallSample,
+  pairedSampleText,
   sampleText,
+  smallSampleLabel,
 } from './agreement-labels'
 import { Badge } from '@/app/components/ui/badge'
 import { Card } from '@/app/components/ui/card'
@@ -79,32 +77,20 @@ function ExcludedList({ outliers }: { outliers: OutlierMark[] }) {
   )
 }
 
-function SampleCount({ label, sample }: { label?: string; sample: RoundSample }) {
+export function SampleLine({ sample }: { sample: SamplePair }) {
+  const { all, withoutOutliers } = sample
+  const small = smallSampleLabel(all, withoutOutliers)
+
   return (
     <>
-      {label ? `${label}: ` : null}
-      {sampleText(sample)}
-      {isSmallSample(sample) ? (
+      {withoutOutliers ? pairedSampleText(all, withoutOutliers) : sampleText(all)}
+      {small ? (
         <>
           {' '}
-          <Badge tone="warning">{SMALL_SAMPLE_LABEL}</Badge>{' '}
+          <Badge tone="warning">{small}</Badge>{' '}
           <InfoTooltip text={SMALL_SAMPLE_HELP} />
         </>
       ) : null}
-    </>
-  )
-}
-
-export function SampleLine({ sample }: { sample: SamplePair }) {
-  const { all, withoutOutliers } = sample
-
-  if (!withoutOutliers) return <SampleCount sample={all} />
-
-  return (
-    <>
-      <SampleCount label={SAMPLE_ALL_LABEL} sample={all} />
-      {' · '}
-      <SampleCount label={SAMPLE_WITHOUT_OUTLIERS_LABEL} sample={withoutOutliers} />
     </>
   )
 }

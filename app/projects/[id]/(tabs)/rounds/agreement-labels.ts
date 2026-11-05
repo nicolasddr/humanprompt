@@ -12,7 +12,7 @@ export const AGREEMENT_LABEL = 'Confiabilidade (ICR)'
 
 export const AGREEMENT_ALL_LABEL = 'com todos'
 
-export const AGREEMENT_WITHOUT_OUTLIERS_LABEL = 'sem os marcados como outlier'
+export const AGREEMENT_WITHOUT_OUTLIERS_LABEL = 'sem outlier(s)'
 
 export const NOT_CALCULABLE_LABEL = 'não calculável'
 
@@ -200,13 +200,30 @@ export function isSmallSample({
 
 export const SMALL_SAMPLE_LABEL = 'Amostra pequena'
 
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1)
+type Sample = { raters: number; responses: number }
+
+function pairedCount(label: string, all: number, withoutOutliers: number): string {
+  if (all === withoutOutliers) return `${label}: ${all}`
+  return (
+    `${label}: ${all} ${AGREEMENT_ALL_LABEL}, ${withoutOutliers} ` +
+    AGREEMENT_WITHOUT_OUTLIERS_LABEL
+  )
 }
 
-export const SAMPLE_ALL_LABEL = capitalize(AGREEMENT_ALL_LABEL)
+export function pairedSampleText(all: Sample, withoutOutliers: Sample): string {
+  return (
+    `${pairedCount('Avaliadores', all.raters, withoutOutliers.raters)} · ` +
+    pairedCount('Respostas', all.responses, withoutOutliers.responses)
+  )
+}
 
-export const SAMPLE_WITHOUT_OUTLIERS_LABEL = capitalize(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
+export function smallSampleLabel(all: Sample, withoutOutliers: Sample | null): string | null {
+  if (isSmallSample(all)) return SMALL_SAMPLE_LABEL
+  if (withoutOutliers && isSmallSample(withoutOutliers)) {
+    return `${SMALL_SAMPLE_LABEL} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`
+  }
+  return null
+}
 
 export const SMALL_SAMPLE_HELP =
   `Abaixo de ${SMALL_SAMPLE_RATERS} avaliadores ou de ${SMALL_SAMPLE_RESPONSES} ` +

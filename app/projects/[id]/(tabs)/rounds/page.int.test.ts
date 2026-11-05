@@ -81,8 +81,6 @@ import {
   MATRIX_PER_RESPONSE_LEGEND,
   OUTLIER_PAIR_RESULT,
   OUTLIER_PAIR_SUMMARY,
-  SAMPLE_ALL_LABEL,
-  SAMPLE_WITHOUT_OUTLIERS_LABEL,
   SMALL_SAMPLE_HELP,
   SMALL_SAMPLE_LABEL,
   CONCENTRATED_LABEL,
@@ -486,6 +484,8 @@ function howToReadOf(element: ReactElement): string[][] {
 function opensClosed(element: ReactElement): boolean {
   return !/<details[^>]*\sopen/.test(renderToStaticMarkup(element))
 }
+
+const WITHOUT_OUTLIERS_PATTERN = AGREEMENT_WITHOUT_OUTLIERS_LABEL.replace(/[()]/g, '\\$&')
 
 function sampleTextOf(tree: unknown): string {
   return visibleTextOf(createElement(SampleLine, sampleOf(tree)))
@@ -1785,11 +1785,21 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     }
 
     expect(visibleTextOf(createElement(SampleLine, props))).toBe(
-      `${SAMPLE_ALL_LABEL}: 4 avaliadores · 8 respostas ${SMALL_SAMPLE_LABEL} i · ` +
-        `${SAMPLE_WITHOUT_OUTLIERS_LABEL}: 3 avaliadores · 8 respostas ${SMALL_SAMPLE_LABEL} i`,
+      'Avaliadores: 4 com todos, 3 sem outlier(s) · Respostas: 8 ' +
+        `${SMALL_SAMPLE_LABEL} i`,
     )
-    expect(SAMPLE_ALL_LABEL).toBe('Com todos')
-    expect(SAMPLE_WITHOUT_OUTLIERS_LABEL).toBe('Sem os marcados como outlier')
+    expect(AGREEMENT_WITHOUT_OUTLIERS_LABEL).toBe('sem outlier(s)')
+
+    const onlyWithout = createElement(SampleLine, {
+      sample: {
+        all: { raters: 3, responses: 12 },
+        withoutOutliers: { raters: 2, responses: 10 },
+      },
+    })
+    expect(visibleTextOf(onlyWithout)).toBe(
+      'Avaliadores: 3 com todos, 2 sem outlier(s) · Respostas: 12 com todos, 10 sem outlier(s) ' +
+        `${SMALL_SAMPLE_LABEL} sem outlier(s) i`,
+    )
 
     const enough = createElement(SampleLine, {
       sample: { all: { raters: 3, responses: 10 }, withoutOutliers: null },
@@ -1913,8 +1923,8 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     })
     expect(visibleTextOf(CriterionAgreementTable(criterionTableOf(tree)))).toMatch(
       new RegExp(
-        `Clareza \\d+ notas ${AGREEMENT_ALL_LABEL} -?\\d,\\d{3} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL} 1,000 ` +
-          `${AGREEMENT_ALL_LABEL} [\\d,]+% [\\d,]+% [\\d,]+% ${AGREEMENT_WITHOUT_OUTLIERS_LABEL} 100% 0% 0%`,
+        `Clareza \\d+ notas ${AGREEMENT_ALL_LABEL} -?\\d,\\d{3} ${WITHOUT_OUTLIERS_PATTERN} 1,000 ` +
+          `${AGREEMENT_ALL_LABEL} [\\d,]+% [\\d,]+% [\\d,]+% ${WITHOUT_OUTLIERS_PATTERN} 100% 0% 0%`,
       ),
     )
 
@@ -2052,7 +2062,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(text).toMatch(
       new RegExp(
         `^Confiabilidade \\(ICR\\) ${AGREEMENT_ALL_LABEL}: Relevance -?\\d,\\d{3} · ` +
-          `Diversity -?\\d,\\d{3} · ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: ` +
+          `Diversity -?\\d,\\d{3} · ${WITHOUT_OUTLIERS_PATTERN}: ` +
           `Relevance ${ROUND_8_ALPHA.relevance} · Diversity ${ROUND_8_ALPHA.diversity}$`,
       ),
     )
@@ -3041,17 +3051,17 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(table).toMatch(
       new RegExp(
         `Relevance Geral 50 notas ${AGREEMENT_ALL_LABEL} -?\\d,\\d{3} ` +
-          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} ${ROUND_8_ALPHA.relevance} ` +
+          `${WITHOUT_OUTLIERS_PATTERN} ${ROUND_8_ALPHA.relevance} ` +
           `${AGREEMENT_ALL_LABEL} [\\d,]+% [\\d,]+% [\\d,]+% ` +
-          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} [\\d,]+% [\\d,]+% [\\d,]+%`,
+          `${WITHOUT_OUTLIERS_PATTERN} [\\d,]+% [\\d,]+% [\\d,]+%`,
       ),
     )
     expect(table).toMatch(
       new RegExp(
         `Diversity ${PER_RESPONSE_LABEL} 10 notas ${AGREEMENT_ALL_LABEL} -?\\d,\\d{3} ` +
-          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} ${ROUND_8_ALPHA.diversity} ` +
+          `${WITHOUT_OUTLIERS_PATTERN} ${ROUND_8_ALPHA.diversity} ` +
           `${AGREEMENT_ALL_LABEL} [\\d,]+% [\\d,]+% [\\d,]+% ` +
-          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} [\\d,]+% [\\d,]+% [\\d,]+%`,
+          `${WITHOUT_OUTLIERS_PATTERN} [\\d,]+% [\\d,]+% [\\d,]+%`,
       ),
     )
     expect(table).not.toContain('avaliadores')
@@ -3060,9 +3070,9 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(visibleTextOf(CriterionByDefinitionTable(byDefinitionTableOf(tree)))).toMatch(
       new RegExp(
         `${AGREEMENT_ALL_LABEL} -?\\d,\\d{3} ` +
-          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} (-?\\d,\\d{3}|[a-zà-ú ]+) ` +
+          `${WITHOUT_OUTLIERS_PATTERN} (-?\\d,\\d{3}|[a-zà-ú ]+) ` +
           `${AGREEMENT_ALL_LABEL} [\\d,]+% [\\d,]+% [\\d,]+% ` +
-          `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`,
+          `${WITHOUT_OUTLIERS_PATTERN}`,
       ),
     )
   })
@@ -3417,7 +3427,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
 
     expect(visibleTextOf(CriterionAgreementTable(criterionTableOf(tree)))).toMatch(
       new RegExp(
-        `Clareza \\d+ notas ${AGREEMENT_ALL_LABEL} 0,\\d{3} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL} 1,000 `,
+        `Clareza \\d+ notas ${AGREEMENT_ALL_LABEL} 0,\\d{3} ${WITHOUT_OUTLIERS_PATTERN} 1,000 `,
       ),
     )
 
