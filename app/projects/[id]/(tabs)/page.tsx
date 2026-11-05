@@ -48,6 +48,13 @@ import { loadProjectOutliers } from './rounds/outliers'
 import { agreementSeries } from './rounds/agreement-series'
 import { roundAgreement, roundAgreements } from './rounds/agreement-matrix'
 import { AgreementSeriesChart } from './rounds/agreement-series-chart'
+import { concordanceSeries } from './rounds/concordance-series'
+import { ConcordanceSeriesChart } from './rounds/concordance-series-chart'
+import {
+  CONCORDANCE_SERIES_HINT,
+  CONCORDANCE_SERIES_POINTS,
+  CONCORDANCE_SERIES_TITLE,
+} from './rounds/concordance-series-labels'
 import { hasQuality, qualityPair, type QualityPair } from './rounds/quality'
 import {
   QUALITY_HINT,
@@ -274,6 +281,10 @@ export default async function ProjectPage({
         agreement.outliers,
       )
     : null
+
+  const concordancePoints = agreement
+    ? concordanceSeries(agreement.rounds, agreement.observations)
+    : []
 
   const focus = agreement ? focusRoundOf(agreement.rounds) : null
   const focusQuality =
@@ -508,6 +519,16 @@ export default async function ProjectPage({
               more={{ points: AGREEMENT_SERIES_POINTS }}
             >
               <AgreementSeriesChart series={series} />
+            </Section>
+          ) : null}
+
+          {showSeries ? (
+            <Section
+              title={CONCORDANCE_SERIES_TITLE}
+              hint={CONCORDANCE_SERIES_HINT}
+              more={{ points: CONCORDANCE_SERIES_POINTS }}
+            >
+              <ConcordanceSeriesChart points={concordancePoints} />
             </Section>
           ) : null}
 

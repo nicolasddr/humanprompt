@@ -60,6 +60,11 @@ import {
   phase4ConfirmationLines,
 } from '@/app/projects/[id]/pipeline/preconditions'
 import { AgreementSeriesChart } from '@/app/projects/[id]/(tabs)/rounds/agreement-series-chart'
+import { ConcordanceSeriesChart } from '@/app/projects/[id]/(tabs)/rounds/concordance-series-chart'
+import {
+  CONCORDANCE_SERIES_HINT,
+  CONCORDANCE_SERIES_POINTS,
+} from '@/app/projects/[id]/(tabs)/rounds/concordance-series-labels'
 import { HowToRead } from '@/app/projects/[id]/(tabs)/rounds/how-to-read'
 import { QualityPanel } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
 import { QualitySeriesList } from '@/app/projects/[id]/(tabs)/rounds/quality-series-list'
@@ -2201,6 +2206,34 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     return markupText(markup.slice(markup.indexOf('</figcaption>'), markup.indexOf('<h3')))
   }
 
+  it('o Administrador vê a Concordância por rodada depois da Confiabilidade, com um ponto por rodada', async () => {
+    const admin = await newUser('Admin')
+    const project = await phaseSeriesScene(admin)
+
+    auth.userId = admin
+    const tree = await render(project)
+
+    const chart = findElement(tree, ConcordanceSeriesChart)
+    expect(chart).toBeTruthy()
+    const { points } = chart!.props as { points: { roundNumber: number; phase: number }[] }
+    expect(points.map((point) => [point.roundNumber, point.phase])).toEqual([
+      [1, 2],
+      [2, 2],
+      [3, 3],
+      [4, 3],
+    ])
+
+    const props = sectionWith(tree, ConcordanceSeriesChart)!.props as SectionProps
+    expect(props.title).toBe('Concordância por rodada')
+    expect(props.hint).toBe(CONCORDANCE_SERIES_HINT)
+    expect(props.more).toEqual({ points: CONCORDANCE_SERIES_POINTS })
+
+    const page = deepText(tree)
+    expect(page.indexOf('Confiabilidade por rodada')).toBeLessThan(
+      page.indexOf('Concordância por rodada'),
+    )
+  })
+
   it('cada card da série diz a fase ao lado da versão de codebook', async () => {
     const admin = await newUser('Admin')
     const project = await phaseSeriesScene(admin)
@@ -2431,6 +2464,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     const tree = await render(project)
     expect(findElement(tree, AgreementSeriesChart)).toBeNull()
     expect(findElement(tree, QualitySeriesList)).toBeNull()
+    expect(findElement(tree, ConcordanceSeriesChart)).toBeNull()
     const page = deepText(tree)
     expect(page).not.toContain('Concordância')
     expect(page).not.toContain('Confiabilidade')
