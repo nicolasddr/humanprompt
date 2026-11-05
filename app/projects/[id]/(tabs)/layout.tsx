@@ -3,12 +3,10 @@ import Link from '@/app/components/app-link'
 import { and, eq } from 'drizzle-orm'
 import { requireUserId } from '@/lib/supabase/server'
 import { transaction, projects, projectMembers, projectInvitations } from '@/lib/db'
-import { taskTypeLabel } from '../../task-types'
-import { memberStatusLabel, projectStatusLabel, roleLabel } from '../../labels'
+import { memberStatusLabel, projectStatusLabel } from '../../labels'
 import { ProjectTabs } from '../project-tabs'
 import { Badge, StatusBadge } from '@/app/components/ui/badge'
 import { PageShell, PageTitle } from '@/app/components/ui/shell'
-import { cx } from '@/app/components/ui/cx'
 import { AppTopBar } from '@/app/components/app-top-bar'
 import { loadTopBar } from '@/app/components/app-top-bar-data'
 import { PROJECT_PHASES, TOTAL_PHASES } from '../phase-bar'
@@ -33,7 +31,6 @@ export default async function ProjectTabsLayout({
         description: projects.description,
         status: projects.status,
         phase: projects.phase,
-        taskType: projects.taskType,
       })
       .from(projects)
       .where(eq(projects.id, id))
@@ -63,7 +60,6 @@ export default async function ProjectTabsLayout({
   if (!canViewProject({ memberships: rows, hasInvitation })) notFound()
 
   const memberships = accessRows(rows)
-  const roles = memberships.map((m) => roleLabel(m.role))
   const onboardingPending = memberships.some(
     (m) => m.role === 'evaluator' && m.status === 'pending_onboarding',
   )
@@ -75,9 +71,6 @@ export default async function ProjectTabsLayout({
   )
   const isActiveMember = memberships.some((m) => m.status === 'active')
   const isMember = memberships.length > 0
-  const summary = [taskTypeLabel(project.taskType), roles.join(' e ')]
-    .filter(Boolean)
-    .join(' · ')
 
   return (
     <PageShell
@@ -115,12 +108,6 @@ export default async function ProjectTabsLayout({
         {project.description ? (
           <p className="mt-1.5 truncate text-sm text-muted" title={project.description}>
             {project.description}
-          </p>
-        ) : null}
-
-        {summary ? (
-          <p className={cx('text-sm text-muted', project.description ? 'mt-1' : 'mt-1.5')}>
-            {summary}
           </p>
         ) : null}
 

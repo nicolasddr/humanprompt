@@ -602,7 +602,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     }
   })
 
-  it('o administrador com o vínculo de avaliador inativo vê o projeto, e o cabeçalho diz só Administrador', async () => {
+  it('o administrador com o vínculo de avaliador inativo vê o projeto, sem a aba Avaliar e sem os papéis no cabeçalho', async () => {
     const admin = await newUser('Admin')
     const project = await newProject(admin)
     await addActiveEvaluator(ownerDb, project, admin)
@@ -610,8 +610,12 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
 
     auth.userId = admin
     await expect(render(project)).resolves.toBeTruthy()
-    const header = deepText(await renderLayout(project))
-    expect(header).toContain('Administrador')
+    const layout = await renderLayout(project)
+    const tabs = findElement(layout, ProjectTabs)
+    expect((tabs!.props as { isAdmin: boolean; isEvaluator: boolean }).isAdmin).toBe(true)
+    expect((tabs!.props as { isAdmin: boolean; isEvaluator: boolean }).isEvaluator).toBe(false)
+    const header = deepText(layout)
+    expect(header).not.toContain('Administrador')
     expect(header).not.toContain('Avaliador')
   })
 
