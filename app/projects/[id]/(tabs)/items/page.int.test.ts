@@ -15,6 +15,7 @@ vi.mock('next/navigation', () => ({
   redirect: (url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
   },
+  useRouter: () => ({ push: () => {}, replace: () => {} }),
 }))
 
 import ProjectItemsPage from '@/app/projects/[id]/(tabs)/items/page'
@@ -29,6 +30,8 @@ import { ITEM_BATCH_BYTES_MAX, ITEM_BATCH_MAX } from '@/lib/limits'
 import { Section } from '@/app/components/ui/section'
 import { buttonClass } from '@/app/components/ui/button'
 import { PHASE_4 } from '@/app/projects/[id]/pipeline/preconditions'
+import type { InputItem } from '@/app/projects/[id]/pipeline/items'
+import type { ItemOrder } from '@/app/projects/[id]/pipeline/item-table'
 import { ownerDb } from '@/lib/db'
 import {
   createUser,
@@ -64,8 +67,8 @@ type ItemsProps = Parameters<typeof ItemsEditor>[0]
 
 type SectionProps = { help: string; more?: { points: readonly string[] } }
 
-function render(id: string) {
-  return ProjectItemsPage({ params: Promise.resolve({ id }) })
+function render(id: string, query: { ordem?: string; pagina?: string } = {}) {
+  return ProjectItemsPage({ params: Promise.resolve({ id }), searchParams: Promise.resolve(query) })
 }
 
 function itemsOf(tree: unknown): ItemsProps {
@@ -254,11 +257,11 @@ describe('app/projects/[id]/items — a tela dos itens de entrada', () => {
     expect(html).toContain('2 itens no pool')
 
     const toggles = [...html.matchAll(/<button[^>]*aria-expanded="false"[^>]*>([^<]*)<\/button>/g)]
-    expect(toggles.map((match) => match[1])).toEqual(['Ver conteúdo', 'Editar'])
+    expect(toggles.map((match) => match[1])).toEqual(['Editar', 'Ver conteúdo'])
     for (const [tag] of toggles) {
       expect(tag).toContain(`class="${buttonClass('secondary', { size: 'sm' })}"`)
     }
-    expect(toggles[1].index!).toBeLessThan(html.indexOf('Mais ações do item Consulta 002'))
+    expect(toggles[0].index!).toBeLessThan(html.indexOf('Mais ações do item Consulta 002'))
 
     expect(html).not.toContain('Salvar item')
     expect(html).not.toContain('Concluir edição')
@@ -287,6 +290,105 @@ describe('app/projects/[id]/items — a tela dos itens de entrada', () => {
     expect(html).toContain('Importar arquivo')
     expect(html).toContain('Novo item')
     expect(html).not.toContain('Fase 4')
+  })
+
+  it('a ordem e a página vêm da URL (?ordem=, ?pagina=), e valor inválido cai no padrão', async () => {
+    const admin = await newUser('Admin')
+    const project = await newProject(admin)
+    await addInputItem(ownerDb, project, admin, { name: 'Consulta 001' })
+
+    auth.userId = admin
+    expect(itemsOf(await render(project))).toMatchObject({ order: 'recentes', page: 1 })
+    expect(
+      itemsOf(await render(project, { ordem: 'antigos', pagina: '2' })),
+    ).toMatchObject({ order: 'antigos', page: 2 })
+    expect(
+      itemsOf(await render(project, { ordem: 'qualquer', pagina: '-3' })),
+    ).toMatchObject({ order: 'recentes', page: 1 })
+  })
+
+  describe('tabela do pool', () => {
+    const projectId = 'p'
+
+    function poolOf(count: number): InputItem[] {
+      return Array.from({ length: count }, (_, i) => ({
+        id: `item-${i + 1}`,
+        name: `Consulta ${String(i + 1).padStart(3, '0')}`,
+        content: 'x'.repeat(i + 1),
+        createdAt: new Date(Date.UTC(2026, 9, 1 + i, 12)).toISOString(),
+        updatedAt: null,
+        usedAt: null,
+        isEditable: true,
+        rounds: [],
+      }))
+    }
+
+    function tableHtml(items: InputItem[], order: ItemOrder, page = 1): string {
+      return renderToStaticMarkup(createElement(ItemsEditor, { projectId, items, order, page }))
+    }
+
+    function rowNames(html: string): string[] {
+      return [...html.matchAll(/<th scope="row"[^>]*>([^<]*)<\/th>/g)].map((match) => match[1])
+    }
+
+    it('abre do mais recente para o mais antigo, 15 por página, com o número e a data de cadastro', () => {
+      const html = tableHtml(poolOf(17), 'recentes')
+      const names = rowNames(html)
+
+      expect(names).toHaveLength(15)
+      expect(names[0]).toBe('Consulta 017')
+      expect(names[14]).toBe('Consulta 003')
+      expect(html).toContain('17/10/2026')
+      expect(html).toContain('1–15 de 17 itens')
+      expect(html).toContain(`href="/projects/${projectId}/items?pagina=2"`)
+      expect(html).toMatch(/<span aria-current="page"[^>]*>1<\/span>/)
+      expect(html).toMatch(/<th scope="col" aria-sort="descending"[^>]*>.*?Cadastro/)
+    })
+
+    it('a segunda página traz o resto, e a página além do fim cai na última', () => {
+      expect(rowNames(tableHtml(poolOf(17), 'recentes', 2))).toEqual([
+        'Consulta 002',
+        'Consulta 001',
+      ])
+      expect(rowNames(tableHtml(poolOf(17), 'recentes', 9))).toEqual([
+        'Consulta 002',
+        'Consulta 001',
+      ])
+    })
+
+    it('com até 15 itens não há paginação', () => {
+      const html = tableHtml(poolOf(15), 'recentes')
+      expect(rowNames(html)).toHaveLength(15)
+      expect(html).not.toContain('Páginas da lista de itens')
+    })
+
+    it('o seletor oferece as três ordens, e os cabeçalhos levam à ordem seguinte guardando-a na URL', () => {
+      const html = tableHtml(poolOf(3), 'recentes')
+      const options = [...html.matchAll(/<option[^>]*>([^<]*)<\/option>/g)].map((m) => m[1])
+      expect(options).toEqual(['Mais recentes primeiro', 'Mais antigos primeiro', 'Nome (A–Z)'])
+
+      const base = `/projects/${projectId}/items`
+      expect(html).toContain(`href="${base}?ordem=nome"`)
+      expect(html).toContain(`href="${base}?ordem=caracteres-desc"`)
+      expect(html).toContain(`href="${base}?ordem=rodadas-desc"`)
+      expect(html).toContain(`href="${base}?ordem=antigos"`)
+
+      expect(rowNames(tableHtml(poolOf(3), 'antigos'))).toEqual([
+        'Consulta 001',
+        'Consulta 002',
+        'Consulta 003',
+      ])
+      const byLength = tableHtml(poolOf(3), 'caracteres')
+      expect(rowNames(byLength)).toEqual(['Consulta 001', 'Consulta 002', 'Consulta 003'])
+      expect(byLength).toContain(`href="${base}?ordem=caracteres-desc"`)
+      const extra = [...byLength.matchAll(/<option[^>]*>([^<]*)<\/option>/g)].map((m) => m[1])
+      expect(extra).toContain('Menos caracteres primeiro')
+    })
+
+    it('as páginas guardam a ordem escolhida', () => {
+      const html = tableHtml(poolOf(20), 'nome', 1)
+      expect(html).toContain(`href="/projects/${projectId}/items?ordem=nome&amp;pagina=2"`)
+    })
   })
 
   describe('painel do lote', () => {

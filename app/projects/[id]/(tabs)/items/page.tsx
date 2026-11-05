@@ -5,14 +5,18 @@ import { loadPipelineAccess, requirePipelineAdmin } from '../../pipeline/access'
 import { loadItems } from '../../pipeline/items'
 import { ItemsEditor } from '../../pipeline/items-editor'
 import { ITEM_FILE_FORMATS, ITEM_FILE_NOTE } from '../../pipeline/item-content'
+import { parseItemOrder, parseItemPage } from '../../pipeline/item-table'
 import { Section } from '@/app/components/ui/section'
 
 export default async function ProjectItemsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ ordem?: string | string[]; pagina?: string | string[] }>
 }) {
   const { id } = await params
+  const query = await searchParams
   const userId = await requireUserId()
 
   const { access, items } = await transaction(async (tx) => {
@@ -36,7 +40,12 @@ export default async function ProjectItemsPage({
           points: items.length > 0 ? [ITEM_FILE_FORMATS, ITEM_FILE_NOTE] : [ITEM_FILE_NOTE],
         }}
       >
-        <ItemsEditor projectId={project.id} items={items} />
+        <ItemsEditor
+          projectId={project.id}
+          items={items}
+          order={parseItemOrder(query.ordem)}
+          page={parseItemPage(query.pagina)}
+        />
       </Section>
     </>
   )

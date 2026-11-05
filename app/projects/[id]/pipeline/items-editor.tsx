@@ -15,14 +15,27 @@ import {
   type ItemState,
   type ItemsState,
 } from './actions'
+import { useRouter } from 'next/navigation'
 import type { InputItem } from './items'
-import { itemPreviewLines } from './item-preview'
-import { itemUsageMark } from '../round-usage'
-import { RoundMarkBadge } from '../round-mark-badge'
-import { Button, buttonClass } from '@/app/components/ui/button'
+import { itemPreview } from './item-preview'
+import {
+  ITEM_ORDER_CHOICES,
+  itemOrderLabel,
+  itemOrderSort,
+  itemPage,
+  itemsHref,
+  nextItemOrder,
+  pageNumbers,
+  sortItems,
+  type ItemOrder,
+  type ItemSortKey,
+} from './item-table'
+import { itemUsageLabel } from '../round-usage'
+import Link from '@/app/components/app-link'
+import { Button, ButtonLink, buttonClass } from '@/app/components/ui/button'
 import { RowActions, RowMenuItem } from '@/app/components/ui/row-actions'
-import { EditableRow } from '@/app/components/ui/editable-row'
-import { Field, Input, Textarea } from '@/app/components/ui/field'
+import { useRowToggle } from '@/app/components/ui/editable-row'
+import { Field, Input, Select, Textarea } from '@/app/components/ui/field'
 import { Form, FormActions } from '@/app/components/ui/form'
 import { Panel } from '@/app/components/ui/panel'
 import { SaveBar } from '@/app/components/ui/save-bar'
@@ -32,7 +45,7 @@ import { Badge } from '@/app/components/ui/badge'
 import { EmptyState } from '@/app/components/ui/empty-state'
 import { InfoTooltip } from '@/app/components/ui/tooltip'
 import { preWrapClass } from '@/app/components/ui/prose'
-import { LockIcon, PlusIcon, SearchIcon } from '@/app/components/ui/icons'
+import { PlusIcon, SearchIcon } from '@/app/components/ui/icons'
 import { cx } from '@/app/components/ui/cx'
 import { plural } from '@/lib/plural'
 import { ITEM_CONTENT_MAX, ITEM_NAME_MAX } from '@/lib/limits'
@@ -66,8 +79,15 @@ const DUPLICATE_LABEL: Record<NonNullable<ItemBatchReady['duplicate']>, string> 
   batch: 'Repetido no lote',
 }
 
-const FROZEN =
-  'Já usado em uma rodada: editar ou remover mudaria o que os avaliadores viram, então este item não muda mais.'
+const FROZEN_REASON =
+  'editar ou remover mudaria o que os avaliadores viram, então este item não muda mais.'
+
+const FROZEN = `Já usado em uma rodada: ${FROZEN_REASON}`
+
+function frozenNote(usage: string | null): string {
+  if (!usage) return FROZEN
+  return `${usage[0].toUpperCase()}${usage.slice(1)}: ${FROZEN_REASON}`
+}
 
 function readingLabel(count: number): string | null {
   if (count === 0) return null
@@ -542,14 +562,33 @@ function ItemRowActions({ projectId, item }: { projectId: string; item: InputIte
   )
 }
 
+const COLUMNS = 7
+
+const cellClass =
+  'border-b border-line px-3 py-2 align-middle max-sm:border-0 max-sm:p-0'
+
+const headerClass =
+  'border-b border-line px-3 py-2 text-left align-bottom text-[11px] font-semibold ' +
+  'tracking-[0.06em] whitespace-nowrap text-muted uppercase'
+
+const USAGE_HELP =
+  'Em quantas rodadas o item já produziu resposta. Item usado em rodada não muda mais: editar ou remover mudaria o que os avaliadores viram.'
+
+function registeredOn(createdAt: string): string {
+  const [year, month, day] = createdAt.slice(0, 10).split('-')
+  return `${day}/${month}/${year}`
+}
+
 function ItemRow({
   projectId,
+  number,
   item,
   selected,
   onOpen,
   onClose,
 }: {
   projectId: string
+  number: number
   item: InputItem
   selected: boolean
   onOpen: () => void
@@ -566,64 +605,374 @@ function ItemRow({
     onOpen()
   }
 
-  const lines = item.content.split('\n').length
-  const usage = itemUsageMark(item.rounds)
+  const { panelId, expandRef, panelRef, collapse, onRowClick } = useRowToggle(
+    expanded,
+    expanded ? onClose : open,
+  )
+
+  const rounds = item.rounds.length
+  const usage = itemUsageLabel(item.rounds)
+  const toggleLabel = expanded
+    ? item.isEditable
+      ? null
+      : 'Fechar'
+    : item.isEditable
+      ? 'Editar'
+      : 'Ver conteúdo'
 
   return (
-    <EditableRow
-      expanded={expanded}
-      onToggle={expanded ? onClose : open}
-      title={item.name}
-      meta={`${plural(item.content.length, 'caractere', 'caracteres')} · ${plural(lines, 'linha', 'linhas')}`}
-      preview={
-        <div className="flex flex-col gap-2">
-          {saved ? <Alert tone="success">Item atualizado.</Alert> : null}
-          <p className={`m-0 text-[13px] ${preWrapClass} text-muted`}>
-            {itemPreviewLines(item.content)}
-          </p>
-        </div>
-      }
-      badges={
-        <>
-          {usage ? <RoundMarkBadge mark={usage} /> : null}
-          {item.isEditable ? null : (
-            <span className="inline-flex items-center gap-1 text-muted">
-              <LockIcon />
-              <InfoTooltip text={FROZEN} />
-            </span>
+    <>
+      <tr
+        onClick={onRowClick}
+        className={cx(
+          'max-sm:grid max-sm:grid-cols-[minmax(0,1fr)_auto_auto] max-sm:items-center',
+          'max-sm:gap-x-3 max-sm:gap-y-0.5 max-sm:px-3 max-sm:py-2',
+          expanded || saved ? 'bg-surface-subtle' : 'max-sm:border-b max-sm:border-line',
+          expanded ? null : 'cursor-pointer hover:bg-surface-subtle',
+        )}
+      >
+        <td className={cx(cellClass, 'w-px text-right text-muted tabular-nums max-sm:hidden')}>
+          {number}
+        </td>
+        <th
+          scope="row"
+          className={cx(
+            cellClass,
+            'max-w-[18rem] min-w-[12rem] text-left font-semibold break-words text-ink',
+            'max-sm:col-span-2 max-sm:max-w-none max-sm:min-w-0',
           )}
-        </>
-      }
-      actions={
-        item.isEditable ? <ItemRowActions projectId={projectId} item={item} /> : null
-      }
-      expandLabel={item.isEditable ? 'Editar' : 'Ver conteúdo'}
-      collapseLabel={item.isEditable ? undefined : 'Fechar'}
-      footer={item.isEditable ? null : FROZEN}
+        >
+          {item.name}
+        </th>
+        <td
+          className={cx(
+            cellClass,
+            'w-full max-w-0 text-[13px] text-muted',
+            'max-sm:col-start-1 max-sm:row-start-2 max-sm:w-auto max-sm:max-w-none',
+          )}
+        >
+          <span className="block truncate">{itemPreview(item.content, 200)}</span>
+        </td>
+        <td className={cx(cellClass, 'text-right whitespace-nowrap tabular-nums max-sm:hidden')}>
+          {item.content.length}
+        </td>
+        <td
+          className={cx(
+            cellClass,
+            'text-right tabular-nums',
+            'max-sm:col-start-2 max-sm:row-start-2 max-sm:justify-self-end',
+          )}
+        >
+          <span className={cx('max-sm:hidden', rounds === 0 && 'text-muted')}>{rounds}</span>
+          {rounds > 0 ? (
+            <span className="sm:hidden">
+              <Badge tone="neutral">{plural(rounds, 'rodada', 'rodadas')}</Badge>
+            </span>
+          ) : null}
+        </td>
+        <td className={cx(cellClass, 'whitespace-nowrap tabular-nums max-sm:hidden')}>
+          {registeredOn(item.createdAt)}
+        </td>
+        <td
+          className={cx(
+            cellClass,
+            'whitespace-nowrap',
+            'max-sm:col-start-3 max-sm:row-span-2 max-sm:row-start-1 max-sm:justify-self-end',
+          )}
+        >
+          <span className="flex items-center justify-end gap-2">
+            {toggleLabel ? (
+              <Button
+                ref={expandRef}
+                variant="secondary"
+                size="sm"
+                aria-expanded={expanded}
+                aria-controls={panelId}
+                onClick={expanded ? collapse : open}
+              >
+                {toggleLabel}
+              </Button>
+            ) : null}
+            {item.isEditable ? <ItemRowActions projectId={projectId} item={item} /> : null}
+          </span>
+        </td>
+      </tr>
+
+      <tr
+        className={cx(
+          'bg-surface-subtle',
+          expanded || saved ? 'max-sm:block max-sm:border-b max-sm:border-line' : 'hidden',
+        )}
+      >
+        <td colSpan={COLUMNS} className={cx(cellClass, 'max-sm:block max-sm:px-3 max-sm:pb-3')}>
+          {saved ? <Alert tone="success">Item atualizado.</Alert> : null}
+
+          <div
+            id={panelId}
+            ref={panelRef}
+            className={cx('flex-col gap-3', expanded ? 'flex' : 'hidden')}
+          >
+            {item.isEditable ? (
+              <EditItemForm
+                projectId={projectId}
+                item={item}
+                action={action}
+                pending={pending}
+                error={state && 'error' in state ? state.error : null}
+                onClose={onClose}
+              />
+            ) : (
+              <>
+                <p className={`m-0 ${contentClass} ${preWrapClass} text-ink`}>{item.content}</p>
+                <p className="m-0 border-t border-line pt-3 text-[13px] text-muted">
+                  {frozenNote(usage)}
+                </p>
+              </>
+            )}
+          </div>
+        </td>
+      </tr>
+    </>
+  )
+}
+
+function SortHeader({
+  projectId,
+  order,
+  sortKey,
+  align = 'left',
+  help,
+  children,
+}: {
+  projectId: string
+  order: ItemOrder
+  sortKey: ItemSortKey
+  align?: 'left' | 'right'
+  help?: string
+  children: React.ReactNode
+}) {
+  const active = itemOrderSort(order)
+  const isActive = active.key === sortKey
+  const arrow = isActive ? (active.desc ? '↓' : '↑') : '↕'
+
+  return (
+    <th
+      scope="col"
+      aria-sort={isActive ? (active.desc ? 'descending' : 'ascending') : undefined}
+      className={cx(headerClass, align === 'right' && 'text-right')}
     >
-      {item.isEditable ? (
-        <EditItemForm
-          projectId={projectId}
-          item={item}
-          action={action}
-          pending={pending}
-          error={state && 'error' in state ? state.error : null}
-          onClose={onClose}
-        />
-      ) : (
-        <p className={`m-0 ${contentClass} ${preWrapClass} text-ink`}>{item.content}</p>
-      )}
-    </EditableRow>
+      <span className="inline-flex items-center gap-1">
+        <Link
+          href={itemsHref(projectId, { order: nextItemOrder(order, sortKey) })}
+          scroll={false}
+          className={cx(
+            'inline-flex items-center gap-1 rounded-sm uppercase hover:text-ink',
+            'focus-visible:ring-[3px] focus-visible:ring-brand-ring focus-visible:outline-none',
+            isActive && 'text-ink',
+          )}
+        >
+          {children}
+          <span aria-hidden="true" className={isActive ? undefined : 'text-line-strong'}>
+            {arrow}
+          </span>
+        </Link>
+        {help ? (
+          <span className="tracking-normal normal-case">
+            <InfoTooltip text={help} />
+          </span>
+        ) : null}
+      </span>
+    </th>
+  )
+}
+
+function ItemTable({
+  projectId,
+  order,
+  rows,
+  expandedId,
+  onExpand,
+}: {
+  projectId: string
+  order: ItemOrder
+  rows: { item: InputItem; number: number }[]
+  expandedId: string | null
+  onExpand: (id: string | null) => void
+}) {
+  const sort = { projectId, order }
+
+  return (
+    <table className="w-full border-collapse text-[13px] max-sm:block max-sm:border-t max-sm:border-line">
+      <thead className="max-sm:hidden">
+        <tr>
+          <th scope="col" className={cx(headerClass, 'text-right')}>
+            #
+          </th>
+          <SortHeader {...sort} sortKey="nome">
+            Nome
+          </SortHeader>
+          <th scope="col" className={headerClass}>
+            Conteúdo
+          </th>
+          <SortHeader {...sort} sortKey="caracteres" align="right">
+            Caracteres
+          </SortHeader>
+          <SortHeader {...sort} sortKey="rodadas" align="right" help={USAGE_HELP}>
+            Rodadas
+          </SortHeader>
+          <SortHeader {...sort} sortKey="cadastro">
+            Cadastro
+          </SortHeader>
+          <th scope="col" className={headerClass}>
+            <span className="sr-only">Ações</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody className="max-sm:block">
+        {rows.map(({ item, number }) => (
+          <ItemRow
+            key={item.id}
+            projectId={projectId}
+            number={number}
+            item={item}
+            selected={expandedId === item.id}
+            onOpen={() => onExpand(item.id)}
+            onClose={() => onExpand(null)}
+          />
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+function PageStep({ href, label, children }: { href: string | null; label: string; children: string }) {
+  const className = 'min-w-8'
+  if (!href) {
+    return (
+      <span
+        aria-disabled="true"
+        aria-label={label}
+        className={buttonClass('secondary', {
+          size: 'sm',
+          className: cx(className, 'pointer-events-none opacity-50'),
+        })}
+      >
+        {children}
+      </span>
+    )
+  }
+  return (
+    <ButtonLink variant="secondary" size="sm" href={href} aria-label={label} className={className}>
+      {children}
+    </ButtonLink>
+  )
+}
+
+function ItemPagination({
+  projectId,
+  order,
+  page,
+  pageCount,
+  start,
+  end,
+  total,
+}: {
+  projectId: string
+  order: ItemOrder
+  page: number
+  pageCount: number
+  start: number
+  end: number
+  total: number
+}) {
+  const href = (target: number) => itemsHref(projectId, { order, page: target })
+
+  return (
+    <nav
+      aria-label="Páginas da lista de itens"
+      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
+    >
+      <p className="m-0 text-[13px] text-muted tabular-nums">
+        {`${start + 1}–${end} de ${plural(total, 'item', 'itens')}`}
+      </p>
+      <div className="flex flex-wrap items-center gap-1">
+        <PageStep href={page > 1 ? href(page - 1) : null} label="Página anterior">
+          ‹
+        </PageStep>
+        {pageNumbers(page, pageCount).map((number, index) =>
+          number === null ? (
+            <span key={`gap-${index}`} aria-hidden="true" className="px-1 text-muted">
+              …
+            </span>
+          ) : number === page ? (
+            <span
+              key={number}
+              aria-current="page"
+              className={buttonClass('primary', { size: 'sm', className: 'min-w-8' })}
+            >
+              {number}
+            </span>
+          ) : (
+            <ButtonLink
+              key={number}
+              variant="secondary"
+              size="sm"
+              href={href(number)}
+              aria-label={`Página ${number}`}
+              className="min-w-8"
+            >
+              {number}
+            </ButtonLink>
+          ),
+        )}
+        <PageStep href={page < pageCount ? href(page + 1) : null} label="Próxima página">
+          ›
+        </PageStep>
+      </div>
+    </nav>
+  )
+}
+
+function OrderSelect({ projectId, order }: { projectId: string; order: ItemOrder }) {
+  const router = useRouter()
+  const choices = ITEM_ORDER_CHOICES.includes(order)
+    ? ITEM_ORDER_CHOICES
+    : [...ITEM_ORDER_CHOICES, order]
+
+  return (
+    <span className="w-[220px] max-sm:w-full">
+      <Select
+        key={order}
+        defaultValue={order}
+        aria-label="Ordem da lista"
+        onChange={(event) =>
+          router.push(itemsHref(projectId, { order: event.target.value as ItemOrder }), {
+            scroll: false,
+          })
+        }
+      >
+        {choices.map((choice) => (
+          <option key={choice} value={choice}>
+            {itemOrderLabel(choice)}
+          </option>
+        ))}
+      </Select>
+    </span>
   )
 }
 
 export function ItemsEditor({
   projectId,
   items,
+  order,
+  page,
 }: {
   projectId: string
   items: InputItem[]
+  order: ItemOrder
+  page: number
 }) {
+  const router = useRouter()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [batch, setBatch] = useState<{ key: number; batch: ItemBatch } | null>(null)
   const [query, setQuery] = useState('')
@@ -639,6 +988,11 @@ export function ItemsEditor({
     setBatch({ key: Date.now(), batch: next })
   }
 
+  function search(value: string) {
+    setQuery(value)
+    if (page > 1) router.replace(itemsHref(projectId, { order }), { scroll: false })
+  }
+
   const { error, reading, load } = useItemFile(openDraft, {
     poolNames: items.map((item) => item.name),
     onBatch: openBatch,
@@ -646,14 +1000,14 @@ export function ItemsEditor({
   const loadFiles = (files: File[]) => void load(files)
   const { over, dropProps } = useFileDrop(loadFiles)
 
-  const search = query.trim().toLowerCase()
-  const visible = search
-    ? items.filter(
-        (item) =>
-          item.name.toLowerCase().includes(search) ||
-          item.content.toLowerCase().includes(search),
-      )
-    : items
+  const needle = query.trim().toLowerCase()
+  const visible = sortItems(items, order).filter(
+    ({ item }) =>
+      !needle ||
+      item.name.toLowerCase().includes(needle) ||
+      item.content.toLowerCase().includes(needle),
+  )
+  const current = itemPage(visible.length, page)
 
   const characters = items.reduce((total, item) => total + item.content.length, 0)
   const empty = items.length === 0
@@ -681,16 +1035,18 @@ export function ItemsEditor({
             )}
 
             <div className="flex flex-wrap items-center gap-2">
+              {empty ? null : <OrderSelect projectId={projectId} order={order} />}
+
               {empty ? null : (
-                <span className="relative inline-flex items-center">
+                <span className="relative inline-flex items-center max-sm:w-full">
                   <SearchIcon className="pointer-events-none absolute left-3 text-muted" />
                   <Input
                     type="search"
                     value={query}
-                    onChange={(event) => setQuery(event.target.value)}
+                    onChange={(event) => search(event.target.value)}
                     aria-label="Buscar itens pelo nome ou pelo conteúdo"
                     placeholder="Buscar no pool"
-                    className="w-[240px] pl-9"
+                    className="w-[240px] pl-9 max-sm:w-full"
                   />
                 </span>
               )}
@@ -740,26 +1096,30 @@ export function ItemsEditor({
           <div
             {...dropProps}
             className={cx(
-              'rounded-card transition-colors',
+              'flex flex-col gap-3 rounded-card transition-colors',
               over && 'bg-accent-bg outline-2 outline-offset-4 outline-brand outline-dashed',
             )}
           >
             {visible.length === 0 ? (
               <EmptyState>Nenhum item do pool corresponde a “{query.trim()}”.</EmptyState>
             ) : (
-              <ul className="m-0 flex list-none flex-col gap-3 p-0">
-                {visible.map((item) => (
-                  <li key={item.id}>
-                    <ItemRow
-                      projectId={projectId}
-                      item={item}
-                      selected={expandedId === item.id}
-                      onOpen={() => setExpandedId(item.id)}
-                      onClose={() => setExpandedId(null)}
-                    />
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ItemTable
+                  projectId={projectId}
+                  order={order}
+                  rows={visible.slice(current.start, current.end)}
+                  expandedId={expandedId}
+                  onExpand={setExpandedId}
+                />
+                {current.pageCount > 1 ? (
+                  <ItemPagination
+                    projectId={projectId}
+                    order={order}
+                    {...current}
+                    total={visible.length}
+                  />
+                ) : null}
+              </>
             )}
           </div>
         )}
@@ -767,4 +1127,3 @@ export function ItemsEditor({
     </div>
   )
 }
-

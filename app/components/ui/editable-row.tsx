@@ -7,6 +7,34 @@ import { cx } from './cx'
 
 const INTERACTIVE = 'button, a, input, select, textarea, summary, label, details'
 
+export function useRowToggle(expanded: boolean, onToggle: () => void) {
+  const panelId = useId()
+  const expandRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const restoreFocus = useRef(false)
+
+  useLayoutEffect(() => {
+    if (expanded) return
+    const focusInside = panelRef.current?.contains(document.activeElement) ?? false
+    if (!restoreFocus.current && !focusInside) return
+    restoreFocus.current = false
+    expandRef.current?.focus()
+  }, [expanded])
+
+  function collapse() {
+    restoreFocus.current = true
+    onToggle()
+  }
+
+  function onRowClick(event: React.MouseEvent<HTMLElement>) {
+    if (expanded) return
+    if ((event.target as HTMLElement).closest(INTERACTIVE)) return
+    onToggle()
+  }
+
+  return { panelId, expandRef, panelRef, collapse, onRowClick }
+}
+
 export function EditableRow({
   title,
   meta,
@@ -34,35 +62,15 @@ export function EditableRow({
   className?: string
   children: React.ReactNode
 }) {
-  const panelId = useId()
-  const expandRef = useRef<HTMLButtonElement>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
-  const restoreFocus = useRef(false)
-
-  useLayoutEffect(() => {
-    if (expanded) return
-    const focusInside = panelRef.current?.contains(document.activeElement) ?? false
-    if (!restoreFocus.current && !focusInside) return
-    restoreFocus.current = false
-    expandRef.current?.focus()
-  }, [expanded])
-
-  function collapse() {
-    restoreFocus.current = true
-    onToggle()
-  }
-
+  const { panelId, expandRef, panelRef, collapse, onRowClick } = useRowToggle(
+    expanded,
+    onToggle,
+  )
   const toggleLabel = expanded ? collapseLabel : expandLabel
-
-  function onCardClick(event: React.MouseEvent<HTMLDivElement>) {
-    if (expanded) return
-    if ((event.target as HTMLElement).closest(INTERACTIVE)) return
-    onToggle()
-  }
 
   return (
     <div
-      onClick={onCardClick}
+      onClick={onRowClick}
       className={cardClassName({
         padding: 'sm',
         tone: expanded ? 'accent' : 'default',
