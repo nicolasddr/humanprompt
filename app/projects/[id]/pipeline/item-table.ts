@@ -95,6 +95,15 @@ export function sortItems(items: readonly InputItem[], order: ItemOrder): Number
   })
 }
 
+export function matchesItemQuery(item: InputItem, query: string): boolean {
+  const needle = query.trim().toLowerCase()
+  return (
+    !needle ||
+    item.name.toLowerCase().includes(needle) ||
+    item.content.toLowerCase().includes(needle)
+  )
+}
+
 export type ItemPage = { page: number; pageCount: number; start: number; end: number }
 
 export function itemPage(total: number, requested: number): ItemPage {
@@ -116,13 +125,20 @@ export function pageNumbers(page: number, pageCount: number): (number | null)[] 
   return numbers
 }
 
-export function itemsHref(
-  projectId: string,
-  { order, page = 1 }: { order: ItemOrder; page?: number },
-): string {
-  const params = new URLSearchParams()
+export type ItemListTarget = { order: ItemOrder; page?: number }
+
+export type ItemListHref = (target: ItemListTarget) => string
+
+export function itemListParams(
+  { order, page = 1 }: ItemListTarget,
+  params: URLSearchParams = new URLSearchParams(),
+): URLSearchParams {
   if (order !== DEFAULT_ITEM_ORDER) params.set('ordem', order)
   if (page > 1) params.set('pagina', String(page))
-  const query = params.toString()
+  return params
+}
+
+export function itemsHref(projectId: string, target: ItemListTarget): string {
+  const query = itemListParams(target).toString()
   return `/projects/${projectId}/items${query ? `?${query}` : ''}`
 }

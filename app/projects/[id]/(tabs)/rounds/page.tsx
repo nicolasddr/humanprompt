@@ -7,6 +7,7 @@ import {
 } from '../../pipeline/codebook'
 import { loadPrompt } from '../../pipeline/prompt'
 import { loadItems } from '../../pipeline/items'
+import { parseItemOrder, parseItemPage } from '../../pipeline/item-table'
 import { listRoundResponses } from '../../pipeline/responses'
 import { focusRoundOf, listRounds, loadOpenRound } from './rounds'
 import { referenceVersionsOf } from './reference-round'
@@ -81,7 +82,12 @@ export default async function ProjectRoundsPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ gerar?: string; criterio?: string }>
+  searchParams: Promise<{
+    gerar?: string
+    criterio?: string
+    ordem?: string | string[]
+    pagina?: string | string[]
+  }>
 }) {
   const { id } = await params
   const query = await searchParams
@@ -307,6 +313,8 @@ export default async function ProjectRoundsPage({
             model={llmModel()}
             responsesLeft={projectResponsesLeft(project.id)}
             responsesMax={projectResponsesMax()}
+            order={parseItemOrder(query.ordem)}
+            page={parseItemPage(query.pagina)}
           />
         </Section>
       ) : null}

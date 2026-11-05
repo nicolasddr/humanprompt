@@ -337,6 +337,9 @@ export function responsesLeftMessage(left: number, max: number): string {
   return `${left} de ${max} ${max === 1 ? 'resposta disponível' : 'respostas disponíveis'}`
 }
 
+export const ITEM_ROUNDS_HELP =
+  'Em quantas rodadas do projeto o item já produziu resposta.'
+
 export const RESPONSES_LEFT_HELP =
   'É o teto de respostas de LLM deste projeto: cada item selecionado gera uma resposta e ' +
   'gasta uma vaga.'

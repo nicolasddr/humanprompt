@@ -21,6 +21,7 @@ vi.mock('next/navigation', () => ({
   redirect: (url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
   },
+  useRouter: () => ({ push: () => {}, replace: () => {} }),
 }))
 
 import ProjectRoundsPage from '@/app/projects/[id]/(tabs)/rounds/page'
@@ -113,6 +114,7 @@ import {
 } from '@/app/projects/[id]/pipeline/preconditions'
 import {
   closeConfirmationLines,
+  ITEM_ROUNDS_HELP,
   pendingEvaluatorsTitle,
   RESPONSES_LEFT_HELP,
   RESPONSES_LEFT_POINTS,
@@ -285,7 +287,10 @@ const GUIDANCE_TEXTS = [
   ]),
 ]
 
-function render(id: string, query: { gerar?: string; criterio?: string } = {}) {
+function render(
+  id: string,
+  query: { gerar?: string; criterio?: string; ordem?: string; pagina?: string } = {},
+) {
   return ProjectRoundsPage({
     params: Promise.resolve({ id }),
     searchParams: Promise.resolve(query),
@@ -1443,7 +1448,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     const tooltips = [...markup.matchAll(/<span [^>]*role="tooltip"[^>]*>([^<]*)<\/span>/g)].map(
       (match) => match[1],
     )
-    expect(tooltips).toEqual([RESPONSES_LEFT_HELP])
+    expect(tooltips).toEqual([RESPONSES_LEFT_HELP, ITEM_ROUNDS_HELP])
     expect(RESPONSES_LEFT_HELP.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(25)
     for (const point of RESPONSES_LEFT_POINTS) expect(markup).toContain(point)
   })
@@ -1618,6 +1623,49 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     })
     expect(itemUsageMark(props.items[1].rounds)).toBeNull()
     expect(props.generated.map((response) => response.itemId)).toEqual([reused])
+  })
+
+  it('o seletor é a tabela da aba Itens: ordem e página na URL do painel, 15 itens por página', async () => {
+    const admin = await newUser('Admin')
+    const { project, codebookVersion, promptVersion } = await readyProject(admin)
+    const ids: string[] = []
+    for (let n = 1; n <= 17; n++) {
+      ids.push(
+        await addInputItem(ownerDb, project, admin, {
+          name: `Consulta ${String(n).padStart(3, '0')}`,
+        }),
+      )
+    }
+    const round = await addRound(ownerDb, project, admin, codebookVersion, promptVersion, {
+      roundNumber: 1,
+    })
+    await addResponse(ownerDb, round, ids[16], admin)
+
+    auth.userId = admin
+    const props = generateOf(await render(project, { gerar: '1' }))
+    expect(props).toMatchObject({ order: 'recentes', page: 1 })
+    expect(
+      generateOf(await render(project, { gerar: '1', ordem: 'nome', pagina: '2' })),
+    ).toMatchObject({ order: 'nome', page: 2 })
+
+    const html = renderToStaticMarkup(createElement(GenerateResponses, props))
+    const rows = [...html.matchAll(/<th scope="row"[^>]*>([^<]*)<\/th>/g)].map((m) => m[1])
+    expect(rows.slice(0, 15)).toEqual(
+      Array.from({ length: 15 }, (_, i) => `Consulta ${String(16 - i).padStart(3, '0')}`),
+    )
+    expect(rows.slice(15)).toEqual(['Consulta 017'])
+    expect(html).toContain('1–15 de 16 itens')
+
+    const base = `/projects/${project}/rounds?gerar=1`
+    expect(html).toContain(`href="${base}&amp;pagina=2#gerar"`)
+    expect(html).toContain(`href="${base}&amp;ordem=nome#gerar"`)
+    expect(html).toContain('aria-label="Selecionar Consulta 016"')
+    expect(html).not.toMatch(/type="checkbox"[^>]*name="item_ids"/)
+
+    const second = renderToStaticMarkup(createElement(GenerateResponses, { ...props, page: 2 }))
+    expect(
+      [...second.matchAll(/<th scope="row"[^>]*>([^<]*)<\/th>/g)].map((m) => m[1]),
+    ).toEqual(['Consulta 001', 'Consulta 017'])
   })
 
   it('com dois avaliadores concordando, a tabela por critério dá o valor, o N e a faixa, com a origem na ⓘ do ICR', async () => {

@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from 'react'
 import { generateResponses, type GenerateResponsesState } from './actions'
 import {
+  ITEM_ROUNDS_HELP,
   RESPONSES_LEFT_HELP,
   RESPONSES_LEFT_POINTS,
   RESPONSES_LEFT_SUMMARY,
@@ -17,11 +18,31 @@ import {
   selectionBlockers,
   selectionCountLabel,
 } from './preconditions'
+import { useRouter } from 'next/navigation'
+import { GENERATE_PANEL_ID } from './open-round-card'
 import type { InputItem } from '../../pipeline/items'
 import type { RoundResponse } from '../../pipeline/responses'
 import { itemPreview } from '../../pipeline/item-preview'
-import { itemUsageMark } from '../../round-usage'
-import { RoundMarkBadge } from '../../round-mark-badge'
+import {
+  itemListParams,
+  itemPage,
+  matchesItemQuery,
+  sortItems,
+  type ItemListHref,
+  type ItemListTarget,
+  type ItemOrder,
+  type NumberedItem,
+} from '../../pipeline/item-table'
+import {
+  ItemOrderSelect,
+  ItemPagination,
+  ItemSearch,
+  ItemSortHeader,
+  itemCellClass,
+  itemHeaderClass,
+  registeredOn,
+} from '../../pipeline/item-table-parts'
+import { itemUsageLabel } from '../../round-usage'
 import { plural } from '@/lib/plural'
 import { Alert } from '@/app/components/ui/alert'
 import { Badge } from '@/app/components/ui/badge'
@@ -32,8 +53,224 @@ import { EmptyState } from '@/app/components/ui/empty-state'
 import { Form, FormActions } from '@/app/components/ui/form'
 import { InfoTooltip } from '@/app/components/ui/tooltip'
 import { LearnMore } from '@/app/components/ui/learn-more'
+import { useRowToggle } from '@/app/components/ui/editable-row'
+import { preWrapClass } from '@/app/components/ui/prose'
+import { cx } from '@/app/components/ui/cx'
 
 const initialState: GenerateResponsesState = null
+
+const COLUMNS = 8
+
+const INTERACTIVE = 'button, a, input, label'
+
+function generateItemsHref(projectId: string, target: ItemListTarget): string {
+  const params = itemListParams(target, new URLSearchParams({ gerar: '1' }))
+  return `/projects/${projectId}/rounds?${params}#${GENERATE_PANEL_ID}`
+}
+
+function rowBackground(checked: boolean, open: boolean, disabled: boolean): string | null {
+  if (checked) return 'bg-accent-bg'
+  if (open) return 'bg-surface-subtle'
+  return disabled ? null : 'hover:bg-surface-subtle'
+}
+
+function SelectableItemRow({
+  item,
+  number,
+  used,
+  checked,
+  disabled,
+  onCheck,
+}: {
+  item: InputItem
+  number: number
+  used: boolean
+  checked: boolean
+  disabled: boolean
+  onCheck: (checked: boolean) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const { panelId, expandRef, panelRef, collapse } = useRowToggle(open, () =>
+    setOpen((current) => !current),
+  )
+
+  const rounds = item.rounds.length
+  const usage = itemUsageLabel(item.rounds)
+
+  function onRowClick(event: React.MouseEvent<HTMLElement>) {
+    if (disabled) return
+    if ((event.target as HTMLElement).closest(INTERACTIVE)) return
+    onCheck(!checked)
+  }
+
+  return (
+    <>
+      <tr
+        onClick={onRowClick}
+        className={cx(
+          'max-sm:grid max-sm:grid-cols-[auto_minmax(0,1fr)_auto_auto] max-sm:items-center',
+          'max-sm:gap-x-3 max-sm:gap-y-0.5 max-sm:px-3 max-sm:py-2',
+          open ? null : 'max-sm:border-b max-sm:border-line',
+          rowBackground(checked, open, disabled),
+          disabled ? null : 'cursor-pointer',
+        )}
+      >
+        <td
+          className={cx(
+            itemCellClass,
+            'w-px',
+            'max-sm:col-start-1 max-sm:row-span-2 max-sm:row-start-1 max-sm:w-auto',
+          )}
+        >
+          <input
+            type="checkbox"
+            checked={checked}
+            disabled={disabled}
+            onChange={(event) => onCheck(event.target.checked)}
+            aria-label={`Selecionar ${item.name}`}
+            className="block h-4 w-4 accent-brand"
+          />
+        </td>
+        <td className={cx(itemCellClass, 'w-px text-right text-muted tabular-nums max-sm:hidden')}>
+          {number}
+        </td>
+        <th
+          scope="row"
+          className={cx(
+            itemCellClass,
+            'max-w-[18rem] min-w-[12rem] text-left font-semibold break-words',
+            used ? 'text-muted' : 'text-ink',
+            'max-sm:col-span-2 max-sm:col-start-2 max-sm:row-start-1 max-sm:max-w-none max-sm:min-w-0',
+          )}
+        >
+          {item.name}
+        </th>
+        <td
+          className={cx(
+            itemCellClass,
+            'w-full max-w-0 text-[13px] text-muted',
+            'max-sm:col-start-2 max-sm:row-start-2 max-sm:w-auto max-sm:max-w-none',
+          )}
+        >
+          <span className="block truncate">{itemPreview(item.content, 200)}</span>
+        </td>
+        <td className={cx(itemCellClass, 'text-right whitespace-nowrap tabular-nums max-sm:hidden')}>
+          {item.content.length}
+        </td>
+        <td
+          className={cx(
+            itemCellClass,
+            'text-right tabular-nums',
+            'max-sm:col-start-3 max-sm:row-start-2 max-sm:justify-self-end',
+          )}
+        >
+          <span className={cx('max-sm:hidden', rounds === 0 && 'text-muted')}>{rounds}</span>
+          {rounds > 0 ? (
+            <span className="sm:hidden">
+              <Badge tone="neutral">{plural(rounds, 'rodada', 'rodadas')}</Badge>
+            </span>
+          ) : null}
+        </td>
+        <td className={cx(itemCellClass, 'whitespace-nowrap tabular-nums max-sm:hidden')}>
+          {registeredOn(item.createdAt)}
+        </td>
+        <td
+          className={cx(
+            itemCellClass,
+            'text-right whitespace-nowrap',
+            'max-sm:col-start-4 max-sm:row-span-2 max-sm:row-start-1 max-sm:justify-self-end',
+          )}
+        >
+          <Button
+            ref={expandRef}
+            type="button"
+            variant="secondary"
+            size="sm"
+            aria-expanded={open}
+            aria-controls={panelId}
+            onClick={open ? collapse : () => setOpen(true)}
+          >
+            {open ? 'Fechar' : 'Ver conteúdo'}
+          </Button>
+        </td>
+      </tr>
+
+      <tr
+        className={cx(
+          'bg-surface-subtle',
+          open ? 'max-sm:block max-sm:border-b max-sm:border-line' : 'hidden',
+        )}
+      >
+        <td colSpan={COLUMNS} className={cx(itemCellClass, 'max-sm:block max-sm:px-3 max-sm:pb-3')}>
+          <div
+            id={panelId}
+            ref={panelRef}
+            className={cx('flex-col gap-3', open ? 'flex' : 'hidden')}
+          >
+            <p
+              className={`m-0 max-h-[50vh] overflow-auto font-mono text-[13px] leading-[1.6] ${preWrapClass} text-ink`}
+            >
+              {item.content}
+            </p>
+            {usage ? (
+              <p className="m-0 border-t border-line pt-3 text-[13px] text-muted">
+                {`${usage[0].toUpperCase()}${usage.slice(1)}.`}
+              </p>
+            ) : null}
+          </div>
+        </td>
+      </tr>
+    </>
+  )
+}
+
+function ItemSelectTable({
+  hrefOf,
+  order,
+  usageHelp,
+  children,
+}: {
+  hrefOf: ItemListHref
+  order: ItemOrder
+  usageHelp?: string
+  children: React.ReactNode
+}) {
+  const sort = { hrefOf, order }
+
+  return (
+    <table className="w-full border-collapse text-[13px] max-sm:block max-sm:border-t max-sm:border-line">
+      <thead className="max-sm:hidden">
+        <tr>
+          <th scope="col" className={itemHeaderClass}>
+            <span className="sr-only">Selecionar</span>
+          </th>
+          <th scope="col" className={cx(itemHeaderClass, 'text-right')}>
+            #
+          </th>
+          <ItemSortHeader {...sort} sortKey="nome">
+            Nome
+          </ItemSortHeader>
+          <th scope="col" className={itemHeaderClass}>
+            Conteúdo
+          </th>
+          <ItemSortHeader {...sort} sortKey="caracteres" align="right">
+            Caracteres
+          </ItemSortHeader>
+          <ItemSortHeader {...sort} sortKey="rodadas" align="right" help={usageHelp}>
+            Rodadas
+          </ItemSortHeader>
+          <ItemSortHeader {...sort} sortKey="cadastro">
+            Cadastro
+          </ItemSortHeader>
+          <th scope="col" className={itemHeaderClass}>
+            <span className="sr-only">Conteúdo completo</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody className="max-sm:block">{children}</tbody>
+    </table>
+  )
+}
 
 export function GenerateResponses({
   projectId,
@@ -43,6 +280,8 @@ export function GenerateResponses({
   model,
   responsesLeft,
   responsesMax,
+  order,
+  page,
 }: {
   projectId: string
   round: { id: string; roundNumber: number }
@@ -51,9 +290,14 @@ export function GenerateResponses({
   model: string
   responsesLeft: number
   responsesMax: number
+  order: ItemOrder
+  page: number
 }) {
+  const router = useRouter()
+  const hrefOf: ItemListHref = (target) => generateItemsHref(projectId, target)
   const [state, action, pending] = useActionState(generateResponses, initialState)
   const [selected, setSelected] = useState<string[]>([])
+  const [query, setQuery] = useState('')
   const [settled, setSettled] = useState<number | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -66,7 +310,6 @@ export function GenerateResponses({
   const usedInRound = generated.map((response) => response.itemId)
   const usedHere = new Set(usedInRound)
   const available = items.filter((item) => !usedHere.has(item.id))
-  const answered = items.filter((item) => usedHere.has(item.id))
 
   const max = generationMax(responsesLeft)
   const outOfQuota = responsesLeft === 0
@@ -111,42 +354,30 @@ export function GenerateResponses({
     formRef.current?.scrollIntoView({ block: 'start' })
   }
 
-  function renderItem(item: InputItem) {
+  function search(value: string) {
+    setQuery(value)
+    if (page > 1) router.replace(hrefOf({ order }), { scroll: false })
+  }
+
+  const listed = sortItems(items, order).filter(({ item }) => matchesItemQuery(item, query))
+  const availableRows = listed.filter(({ item }) => !usedHere.has(item.id))
+  const answeredRows = listed.filter(({ item }) => usedHere.has(item.id))
+  const current = itemPage(availableRows.length, page)
+
+  function renderRow({ item, number }: NumberedItem) {
     const used = usedHere.has(item.id)
     const checked = selected.includes(item.id)
-    const usage = itemUsageMark(item.rounds)
 
     return (
-      <li key={item.id}>
-        <Card padding="sm" tone={used ? 'subtle' : 'default'}>
-          <label className={`flex gap-2.5 ${used ? 'cursor-default' : 'cursor-pointer'}`}>
-            <input
-              type="checkbox"
-              name="item_ids"
-              value={item.id}
-              checked={checked}
-              disabled={used || pending || outOfQuota || (atMax && !checked)}
-              onChange={(event) => toggle(item.id, event.target.checked)}
-              className="mt-[3px] h-4 w-4 shrink-0 accent-brand"
-            />
-            <span className="flex min-w-0 flex-col gap-1">
-              <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <span className={`text-sm font-semibold ${used ? 'text-muted' : 'text-ink'}`}>
-                  {item.name}
-                </span>
-                {used ? (
-                  <Badge tone="info">Já respondido nesta rodada</Badge>
-                ) : usage ? (
-                  <RoundMarkBadge mark={usage} />
-                ) : null}
-              </span>
-              <span className="text-[13px] break-words text-muted">
-                {itemPreview(item.content)}
-              </span>
-            </span>
-          </label>
-        </Card>
-      </li>
+      <SelectableItemRow
+        key={item.id}
+        item={item}
+        number={number}
+        used={used}
+        checked={checked}
+        disabled={used || pending || outOfQuota || (atMax && !checked)}
+        onCheck={(next) => toggle(item.id, next)}
+      />
     )
   }
 
@@ -176,23 +407,50 @@ export function GenerateResponses({
           <LearnMore summary={RESPONSES_LEFT_SUMMARY} points={RESPONSES_LEFT_POINTS} />
         </div>
 
+        {selected.map((itemId) => (
+          <input key={itemId} type="hidden" name="item_ids" value={itemId} />
+        ))}
+
         {available.length > 0 ? (
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
-            {available.map(renderItem)}
-          </ul>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <ItemOrderSelect hrefOf={hrefOf} order={order} />
+              <ItemSearch value={query} onChange={search} />
+            </div>
+
+            {availableRows.length === 0 ? (
+              <EmptyState>Nenhum item do pool corresponde a “{query.trim()}”.</EmptyState>
+            ) : (
+              <>
+                <ItemSelectTable hrefOf={hrefOf} order={order} usageHelp={ITEM_ROUNDS_HELP}>
+                  {availableRows.slice(current.start, current.end).map(renderRow)}
+                </ItemSelectTable>
+                {current.pageCount > 1 ? (
+                  <ItemPagination
+                    hrefOf={hrefOf}
+                    order={order}
+                    {...current}
+                    total={availableRows.length}
+                  />
+                ) : null}
+              </>
+            )}
+          </div>
         ) : null}
 
-        {answered.length > 0 ? (
+        {answeredRows.length > 0 ? (
           <Disclosure
             summary={plural(
-              answered.length,
+              answeredRows.length,
               'item já respondido nesta rodada',
               'itens já respondidos nesta rodada',
             )}
           >
-            <ul className="m-0 mt-2 flex list-none flex-col gap-2 p-0">
-              {answered.map(renderItem)}
-            </ul>
+            <div className="mt-2">
+              <ItemSelectTable hrefOf={hrefOf} order={order}>
+                {answeredRows.map(renderRow)}
+              </ItemSelectTable>
+            </div>
           </Disclosure>
         ) : null}
 

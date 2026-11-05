@@ -19,23 +19,27 @@ import { useRouter } from 'next/navigation'
 import type { InputItem } from './items'
 import { itemPreview } from './item-preview'
 import {
-  ITEM_ORDER_CHOICES,
-  itemOrderLabel,
-  itemOrderSort,
   itemPage,
   itemsHref,
-  nextItemOrder,
-  pageNumbers,
+  matchesItemQuery,
   sortItems,
+  type ItemListHref,
   type ItemOrder,
-  type ItemSortKey,
 } from './item-table'
+import {
+  ItemOrderSelect,
+  ItemPagination,
+  ItemSearch,
+  ItemSortHeader,
+  itemCellClass,
+  itemHeaderClass,
+  registeredOn,
+} from './item-table-parts'
 import { itemUsageLabel } from '../round-usage'
-import Link from '@/app/components/app-link'
-import { Button, ButtonLink, buttonClass } from '@/app/components/ui/button'
+import { Button, buttonClass } from '@/app/components/ui/button'
 import { RowActions, RowMenuItem } from '@/app/components/ui/row-actions'
 import { useRowToggle } from '@/app/components/ui/editable-row'
-import { Field, Input, Select, Textarea } from '@/app/components/ui/field'
+import { Field, Input, Textarea } from '@/app/components/ui/field'
 import { Form, FormActions } from '@/app/components/ui/form'
 import { Panel } from '@/app/components/ui/panel'
 import { SaveBar } from '@/app/components/ui/save-bar'
@@ -43,9 +47,8 @@ import { ConfirmDialog, DialogLines } from '@/app/components/ui/confirm-dialog'
 import { Alert } from '@/app/components/ui/alert'
 import { Badge } from '@/app/components/ui/badge'
 import { EmptyState } from '@/app/components/ui/empty-state'
-import { InfoTooltip } from '@/app/components/ui/tooltip'
 import { preWrapClass } from '@/app/components/ui/prose'
-import { PlusIcon, SearchIcon } from '@/app/components/ui/icons'
+import { PlusIcon } from '@/app/components/ui/icons'
 import { cx } from '@/app/components/ui/cx'
 import { plural } from '@/lib/plural'
 import { ITEM_CONTENT_MAX, ITEM_NAME_MAX } from '@/lib/limits'
@@ -564,20 +567,8 @@ function ItemRowActions({ projectId, item }: { projectId: string; item: InputIte
 
 const COLUMNS = 7
 
-const cellClass =
-  'border-b border-line px-3 py-2 align-middle max-sm:border-0 max-sm:p-0'
-
-const headerClass =
-  'border-b border-line px-3 py-2 text-left align-bottom text-[11px] font-semibold ' +
-  'tracking-[0.06em] whitespace-nowrap text-muted uppercase'
-
 const USAGE_HELP =
   'Em quantas rodadas o item já produziu resposta. Item usado em rodada não muda mais: editar ou remover mudaria o que os avaliadores viram.'
-
-function registeredOn(createdAt: string): string {
-  const [year, month, day] = createdAt.slice(0, 10).split('-')
-  return `${day}/${month}/${year}`
-}
 
 function ItemRow({
   projectId,
@@ -631,13 +622,13 @@ function ItemRow({
           expanded ? null : 'cursor-pointer hover:bg-surface-subtle',
         )}
       >
-        <td className={cx(cellClass, 'w-px text-right text-muted tabular-nums max-sm:hidden')}>
+        <td className={cx(itemCellClass, 'w-px text-right text-muted tabular-nums max-sm:hidden')}>
           {number}
         </td>
         <th
           scope="row"
           className={cx(
-            cellClass,
+            itemCellClass,
             'max-w-[18rem] min-w-[12rem] text-left font-semibold break-words text-ink',
             'max-sm:col-span-2 max-sm:max-w-none max-sm:min-w-0',
           )}
@@ -646,19 +637,19 @@ function ItemRow({
         </th>
         <td
           className={cx(
-            cellClass,
+            itemCellClass,
             'w-full max-w-0 text-[13px] text-muted',
             'max-sm:col-start-1 max-sm:row-start-2 max-sm:w-auto max-sm:max-w-none',
           )}
         >
           <span className="block truncate">{itemPreview(item.content, 200)}</span>
         </td>
-        <td className={cx(cellClass, 'text-right whitespace-nowrap tabular-nums max-sm:hidden')}>
+        <td className={cx(itemCellClass, 'text-right whitespace-nowrap tabular-nums max-sm:hidden')}>
           {item.content.length}
         </td>
         <td
           className={cx(
-            cellClass,
+            itemCellClass,
             'text-right tabular-nums',
             'max-sm:col-start-2 max-sm:row-start-2 max-sm:justify-self-end',
           )}
@@ -670,12 +661,12 @@ function ItemRow({
             </span>
           ) : null}
         </td>
-        <td className={cx(cellClass, 'whitespace-nowrap tabular-nums max-sm:hidden')}>
+        <td className={cx(itemCellClass, 'whitespace-nowrap tabular-nums max-sm:hidden')}>
           {registeredOn(item.createdAt)}
         </td>
         <td
           className={cx(
-            cellClass,
+            itemCellClass,
             'whitespace-nowrap',
             'max-sm:col-start-3 max-sm:row-span-2 max-sm:row-start-1 max-sm:justify-self-end',
           )}
@@ -704,7 +695,7 @@ function ItemRow({
           expanded || saved ? 'max-sm:block max-sm:border-b max-sm:border-line' : 'hidden',
         )}
       >
-        <td colSpan={COLUMNS} className={cx(cellClass, 'max-sm:block max-sm:px-3 max-sm:pb-3')}>
+        <td colSpan={COLUMNS} className={cx(itemCellClass, 'max-sm:block max-sm:px-3 max-sm:pb-3')}>
           {saved ? <Alert tone="success">Item atualizado.</Alert> : null}
 
           <div
@@ -736,94 +727,46 @@ function ItemRow({
   )
 }
 
-function SortHeader({
-  projectId,
-  order,
-  sortKey,
-  align = 'left',
-  help,
-  children,
-}: {
-  projectId: string
-  order: ItemOrder
-  sortKey: ItemSortKey
-  align?: 'left' | 'right'
-  help?: string
-  children: React.ReactNode
-}) {
-  const active = itemOrderSort(order)
-  const isActive = active.key === sortKey
-  const arrow = isActive ? (active.desc ? '↓' : '↑') : '↕'
-
-  return (
-    <th
-      scope="col"
-      aria-sort={isActive ? (active.desc ? 'descending' : 'ascending') : undefined}
-      className={cx(headerClass, align === 'right' && 'text-right')}
-    >
-      <span className="inline-flex items-center gap-1">
-        <Link
-          href={itemsHref(projectId, { order: nextItemOrder(order, sortKey) })}
-          scroll={false}
-          className={cx(
-            'inline-flex items-center gap-1 rounded-sm uppercase hover:text-ink',
-            'focus-visible:ring-[3px] focus-visible:ring-brand-ring focus-visible:outline-none',
-            isActive && 'text-ink',
-          )}
-        >
-          {children}
-          <span aria-hidden="true" className={isActive ? undefined : 'text-line-strong'}>
-            {arrow}
-          </span>
-        </Link>
-        {help ? (
-          <span className="tracking-normal normal-case">
-            <InfoTooltip text={help} />
-          </span>
-        ) : null}
-      </span>
-    </th>
-  )
-}
-
 function ItemTable({
   projectId,
+  hrefOf,
   order,
   rows,
   expandedId,
   onExpand,
 }: {
   projectId: string
+  hrefOf: ItemListHref
   order: ItemOrder
   rows: { item: InputItem; number: number }[]
   expandedId: string | null
   onExpand: (id: string | null) => void
 }) {
-  const sort = { projectId, order }
+  const sort = { hrefOf, order }
 
   return (
     <table className="w-full border-collapse text-[13px] max-sm:block max-sm:border-t max-sm:border-line">
       <thead className="max-sm:hidden">
         <tr>
-          <th scope="col" className={cx(headerClass, 'text-right')}>
+          <th scope="col" className={cx(itemHeaderClass, 'text-right')}>
             #
           </th>
-          <SortHeader {...sort} sortKey="nome">
+          <ItemSortHeader {...sort} sortKey="nome">
             Nome
-          </SortHeader>
-          <th scope="col" className={headerClass}>
+          </ItemSortHeader>
+          <th scope="col" className={itemHeaderClass}>
             Conteúdo
           </th>
-          <SortHeader {...sort} sortKey="caracteres" align="right">
+          <ItemSortHeader {...sort} sortKey="caracteres" align="right">
             Caracteres
-          </SortHeader>
-          <SortHeader {...sort} sortKey="rodadas" align="right" help={USAGE_HELP}>
+          </ItemSortHeader>
+          <ItemSortHeader {...sort} sortKey="rodadas" align="right" help={USAGE_HELP}>
             Rodadas
-          </SortHeader>
-          <SortHeader {...sort} sortKey="cadastro">
+          </ItemSortHeader>
+          <ItemSortHeader {...sort} sortKey="cadastro">
             Cadastro
-          </SortHeader>
-          <th scope="col" className={headerClass}>
+          </ItemSortHeader>
+          <th scope="col" className={itemHeaderClass}>
             <span className="sr-only">Ações</span>
           </th>
         </tr>
@@ -845,122 +788,6 @@ function ItemTable({
   )
 }
 
-function PageStep({ href, label, children }: { href: string | null; label: string; children: string }) {
-  const className = 'min-w-8'
-  if (!href) {
-    return (
-      <span
-        aria-disabled="true"
-        aria-label={label}
-        className={buttonClass('secondary', {
-          size: 'sm',
-          className: cx(className, 'pointer-events-none opacity-50'),
-        })}
-      >
-        {children}
-      </span>
-    )
-  }
-  return (
-    <ButtonLink variant="secondary" size="sm" href={href} aria-label={label} className={className}>
-      {children}
-    </ButtonLink>
-  )
-}
-
-function ItemPagination({
-  projectId,
-  order,
-  page,
-  pageCount,
-  start,
-  end,
-  total,
-}: {
-  projectId: string
-  order: ItemOrder
-  page: number
-  pageCount: number
-  start: number
-  end: number
-  total: number
-}) {
-  const href = (target: number) => itemsHref(projectId, { order, page: target })
-
-  return (
-    <nav
-      aria-label="Páginas da lista de itens"
-      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
-    >
-      <p className="m-0 text-[13px] text-muted tabular-nums">
-        {`${start + 1}–${end} de ${plural(total, 'item', 'itens')}`}
-      </p>
-      <div className="flex flex-wrap items-center gap-1">
-        <PageStep href={page > 1 ? href(page - 1) : null} label="Página anterior">
-          ‹
-        </PageStep>
-        {pageNumbers(page, pageCount).map((number, index) =>
-          number === null ? (
-            <span key={`gap-${index}`} aria-hidden="true" className="px-1 text-muted">
-              …
-            </span>
-          ) : number === page ? (
-            <span
-              key={number}
-              aria-current="page"
-              className={buttonClass('primary', { size: 'sm', className: 'min-w-8' })}
-            >
-              {number}
-            </span>
-          ) : (
-            <ButtonLink
-              key={number}
-              variant="secondary"
-              size="sm"
-              href={href(number)}
-              aria-label={`Página ${number}`}
-              className="min-w-8"
-            >
-              {number}
-            </ButtonLink>
-          ),
-        )}
-        <PageStep href={page < pageCount ? href(page + 1) : null} label="Próxima página">
-          ›
-        </PageStep>
-      </div>
-    </nav>
-  )
-}
-
-function OrderSelect({ projectId, order }: { projectId: string; order: ItemOrder }) {
-  const router = useRouter()
-  const choices = ITEM_ORDER_CHOICES.includes(order)
-    ? ITEM_ORDER_CHOICES
-    : [...ITEM_ORDER_CHOICES, order]
-
-  return (
-    <span className="w-[220px] max-sm:w-full">
-      <Select
-        key={order}
-        defaultValue={order}
-        aria-label="Ordem da lista"
-        onChange={(event) =>
-          router.push(itemsHref(projectId, { order: event.target.value as ItemOrder }), {
-            scroll: false,
-          })
-        }
-      >
-        {choices.map((choice) => (
-          <option key={choice} value={choice}>
-            {itemOrderLabel(choice)}
-          </option>
-        ))}
-      </Select>
-    </span>
-  )
-}
-
 export function ItemsEditor({
   projectId,
   items,
@@ -973,6 +800,7 @@ export function ItemsEditor({
   page: number
 }) {
   const router = useRouter()
+  const hrefOf: ItemListHref = (target) => itemsHref(projectId, target)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [batch, setBatch] = useState<{ key: number; batch: ItemBatch } | null>(null)
   const [query, setQuery] = useState('')
@@ -990,7 +818,7 @@ export function ItemsEditor({
 
   function search(value: string) {
     setQuery(value)
-    if (page > 1) router.replace(itemsHref(projectId, { order }), { scroll: false })
+    if (page > 1) router.replace(hrefOf({ order }), { scroll: false })
   }
 
   const { error, reading, load } = useItemFile(openDraft, {
@@ -1000,13 +828,7 @@ export function ItemsEditor({
   const loadFiles = (files: File[]) => void load(files)
   const { over, dropProps } = useFileDrop(loadFiles)
 
-  const needle = query.trim().toLowerCase()
-  const visible = sortItems(items, order).filter(
-    ({ item }) =>
-      !needle ||
-      item.name.toLowerCase().includes(needle) ||
-      item.content.toLowerCase().includes(needle),
-  )
+  const visible = sortItems(items, order).filter(({ item }) => matchesItemQuery(item, query))
   const current = itemPage(visible.length, page)
 
   const characters = items.reduce((total, item) => total + item.content.length, 0)
@@ -1035,20 +857,10 @@ export function ItemsEditor({
             )}
 
             <div className="flex flex-wrap items-center gap-2">
-              {empty ? null : <OrderSelect projectId={projectId} order={order} />}
+              {empty ? null : <ItemOrderSelect hrefOf={hrefOf} order={order} />}
 
               {empty ? null : (
-                <span className="relative inline-flex items-center max-sm:w-full">
-                  <SearchIcon className="pointer-events-none absolute left-3 text-muted" />
-                  <Input
-                    type="search"
-                    value={query}
-                    onChange={(event) => search(event.target.value)}
-                    aria-label="Buscar itens pelo nome ou pelo conteúdo"
-                    placeholder="Buscar no pool"
-                    className="w-[240px] pl-9 max-sm:w-full"
-                  />
-                </span>
+                <ItemSearch value={query} onChange={search} />
               )}
 
               {empty ? null : (
@@ -1106,6 +918,7 @@ export function ItemsEditor({
               <>
                 <ItemTable
                   projectId={projectId}
+                  hrefOf={hrefOf}
                   order={order}
                   rows={visible.slice(current.start, current.end)}
                   expandedId={expandedId}
@@ -1113,7 +926,7 @@ export function ItemsEditor({
                 />
                 {current.pageCount > 1 ? (
                   <ItemPagination
-                    projectId={projectId}
+                    hrefOf={hrefOf}
                     order={order}
                     {...current}
                     total={visible.length}
