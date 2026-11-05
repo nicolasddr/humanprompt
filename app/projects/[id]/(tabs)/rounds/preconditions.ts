@@ -344,13 +344,6 @@ export const RESPONSES_LEFT_HELP =
   'É o teto de respostas de LLM deste projeto: cada item selecionado gera uma resposta e ' +
   'gasta uma vaga.'
 
-export const RESPONSES_LEFT_SUMMARY = 'Sobre o teto de respostas'
-
-export const RESPONSES_LEFT_POINTS: readonly string[] = [
-  'O teto soma as respostas de todas as rodadas e também as dos testes de prompt.',
-  'Ele existe para o teste não virar fatura. Para revisá-lo, fale com quem cuida da instalação.',
-]
-
 export function selectionCountLabel(count: number, max: number): string {
   return `${plural(count, 'selecionado', 'selecionados')} · até ${max} por geração`
 }

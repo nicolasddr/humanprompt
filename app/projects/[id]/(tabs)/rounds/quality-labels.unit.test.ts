@@ -4,10 +4,8 @@ import {
   QUALITY_CRITERION_LEGEND,
   QUALITY_HINT,
   QUALITY_MATRIX_LEGEND,
-  QUALITY_POINTS,
   QUALITY_SERIES_HINT,
   QUALITY_SERIES_NOTE,
-  QUALITY_SERIES_POINTS,
   formatShare,
   levelShares,
   levelText,
@@ -43,10 +41,6 @@ function exportedStrings(): string[] {
   })
 }
 
-function wordsOf(text: string): number {
-  return text.split(/\s+/).filter(Boolean).length
-}
-
 describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () => {
   it('a porcentagem sai em pt-BR com no máximo uma casa decimal', () => {
     expect(formatShare(0.625)).toBe('62,5%')
@@ -77,9 +71,7 @@ describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () =
         QUALITY_CRITERION_LEGEND,
         QUALITY_MATRIX_LEGEND,
         QUALITY_SERIES_HINT,
-        ...QUALITY_SERIES_POINTS,
         QUALITY_SERIES_NOTE,
-        ...QUALITY_POINTS,
       ]),
     )
   })
@@ -133,48 +125,14 @@ describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () =
   it('as frases da série não falam de ICR, de faixa nem comparam fases', () => {
     for (const text of [
       QUALITY_SERIES_HINT,
-      ...QUALITY_SERIES_POINTS,
       QUALITY_SERIES_NOTE,
     ]) {
       expect(text).not.toMatch(/ICR|Krippendorff|concordância|faixa|confiáve|compar/i)
     }
-    const series = QUALITY_SERIES_POINTS.join(' ')
-    expect(series).toContain('Fase 3')
-    expect(series).toContain('Fase 2 não entram')
-    expect(series).toContain('Nenhum valor junta rodadas')
-  })
-
-  it('as explicações longas viram tópicos curtos de "Saiba mais", e não um ⓘ', () => {
-    expect(labels).not.toHaveProperty('QUALITY_HELP')
-    expect(labels).not.toHaveProperty('QUALITY_SERIES_HELP')
-
-    for (const points of [QUALITY_POINTS, QUALITY_SERIES_POINTS]) {
-      expect(points.length).toBeGreaterThanOrEqual(1)
-      expect(points.length).toBeLessThanOrEqual(3)
-      for (const point of points) {
-        expect(wordsOf(point)).toBeLessThanOrEqual(40)
-      }
-    }
-
-    const series = QUALITY_SERIES_POINTS.join(' ')
-    expect(series).toContain('versões de codebook e de prompt')
-    expect(series).toContain('nada é somado nem tirado a média')
-    expect(series).toContain(`depois do ${AGREEMENT_ALL_LABEL}`)
-    expect(series).toContain('ao lado da sua rodada de referência, na tela de rodadas')
-
-    const quality = QUALITY_POINTS.join(' ')
-    expect(quality).toContain('podem não somar 100%')
-    expect(quality).toContain('não fixa um alvo')
-    expect(quality).toContain('quem conhece a tarefa é quem lê o número')
   })
 
   it('a explicação diz o que o número é, sem orientar a leitura pelo ICR nem por faixa', () => {
     expect(QUALITY_HINT).toContain('Alto, Médio e Baixo')
-    const quality = QUALITY_POINTS.join(' ')
-    expect(quality).toContain('quando ele é por resposta')
-    expect(quality).toContain('não o de respostas')
-    expect(quality).toContain('a contagem vem ao lado')
-    expect(quality.toLowerCase()).not.toContain(QUALITY_HINT.slice(0, -1).toLowerCase())
-    expect(quality).not.toMatch(/ICR|Krippendorff|concordância|faixa|confiáve/i)
+    expect(QUALITY_HINT).not.toMatch(/ICR|Krippendorff|concordância|faixa|confiáve/i)
   })
 })

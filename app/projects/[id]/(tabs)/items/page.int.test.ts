@@ -23,7 +23,6 @@ import { ItemsEditor, ItemBatchPanel } from '@/app/projects/[id]/pipeline/items-
 import { itemUsageMark } from '@/app/projects/[id]/round-usage'
 import {
   ITEM_FILE_FORMATS,
-  ITEM_FILE_NOTE,
   type ItemBatch,
 } from '@/app/projects/[id]/pipeline/item-content'
 import { ITEM_BATCH_BYTES_MAX, ITEM_BATCH_MAX } from '@/lib/limits'
@@ -205,10 +204,7 @@ describe('app/projects/[id]/items — a tela dos itens de entrada', () => {
     expect(help).toBe(
       'Cada item vira uma resposta da LLM, e as fases seguintes amostram desse pool.',
     )
-    expect(more?.points).toEqual([ITEM_FILE_NOTE])
-    expect(ITEM_FILE_NOTE).toBe(
-      'Um arquivo só entra no formulário e continua editável antes de cadastrar. Vários arquivos de uma vez viram um item cada, com o nome do arquivo como título. O arquivo em si não é guardado.',
-    )
+    expect(more).toBeUndefined()
   })
 
   it('com itens no pool, o upload vira o botão "Importar arquivo" e nenhum input de arquivo fica à vista', async () => {
@@ -236,7 +232,7 @@ describe('app/projects/[id]/items — a tela dos itens de entrada', () => {
     const section = findElement(tree, Section)
     const { help, more } = section!.props as SectionProps
     expect(help.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(25)
-    expect(more?.points).toEqual([ITEM_FILE_FORMATS, ITEM_FILE_NOTE])
+    expect(more).toBeUndefined()
   })
 
   it('cada item mostra "Editar" (ou "Ver conteúdo", se congelado) antes do ⋯, e o formulário do item usa a barra de salvar', async () => {

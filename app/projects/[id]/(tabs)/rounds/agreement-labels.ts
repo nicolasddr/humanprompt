@@ -78,13 +78,6 @@ export const OUTLIER_PAIR_SUMMARY =
 
 export const OUTLIER_PAIR_RESULT = `O resultado da rodada é o valor ${AGREEMENT_ALL_LABEL}.`
 
-export const OUTLIER_PAIR_POINTS: readonly string[] = [
-  `O segundo valor, ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}, refaz a conta retirando as notas ` +
-    'de quem foi marcado, para mostrar o quanto a exclusão move o número.',
-  'A exclusão é declarada e justificada uma a uma, nunca sugerida pela ferramenta, e ' +
-    'nenhuma nota é apagada por causa dela.',
-]
-
 export const BAND_REFERENCE_LABEL = 'Faixa de referência'
 
 export const BAND_REFERENCE =

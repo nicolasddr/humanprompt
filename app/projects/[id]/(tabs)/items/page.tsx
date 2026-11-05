@@ -4,7 +4,6 @@ import { transaction } from '@/lib/db'
 import { loadPipelineAccess, requirePipelineAdmin } from '../../pipeline/access'
 import { loadItems } from '../../pipeline/items'
 import { ItemsEditor } from '../../pipeline/items-editor'
-import { ITEM_FILE_FORMATS, ITEM_FILE_NOTE } from '../../pipeline/item-content'
 import { parseItemOrder, parseItemPage } from '../../pipeline/item-table'
 import { Section } from '@/app/components/ui/section'
 
@@ -36,9 +35,6 @@ export default async function ProjectItemsPage({
         title="Itens de entrada"
         hint="O pool de itens do projeto."
         help="Cada item vira uma resposta da LLM, e as fases seguintes amostram desse pool."
-        more={{
-          points: items.length > 0 ? [ITEM_FILE_FORMATS, ITEM_FILE_NOTE] : [ITEM_FILE_NOTE],
-        }}
       >
         <ItemsEditor
           projectId={project.id}

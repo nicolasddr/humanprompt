@@ -1,6 +1,6 @@
 import { plural } from '@/lib/plural'
 import { scaleLabel } from '../evaluate/scale'
-import { PHASE_2, PHASE_3, PHASE_4 } from '../../pipeline/preconditions'
+import { PHASE_3, PHASE_4 } from '../../pipeline/preconditions'
 import type { QualityLevel } from './quality'
 import { formatShare, shareNumber } from './share'
 import {
@@ -22,14 +22,6 @@ export const QUALITY_HINT =
   `A distribuição das notas desta rodada entre ${scaleLabel('high')}, ` +
   `${scaleLabel('medium')} e ${scaleLabel('low')}.`
 
-export const QUALITY_POINTS: readonly string[] = [
-  'Cada nota é uma célula avaliada por um avaliador numa resposta: definição × critério, ' +
-    'ou só o critério, quando ele é por resposta. O total é o número de notas, não o de respostas.',
-  'Arredondadas, as porcentagens podem não somar 100%, e por isso a contagem vem ao lado.',
-  'A ferramenta não fixa um alvo para essa distribuição nem diz se o valor basta: quem ' +
-    'conhece a tarefa é quem lê o número.',
-]
-
 export const QUALITY_CRITERION_LEGEND =
   'Na tabela por critério, cada linha junta as notas do critério em todas as definições ' +
   'que o têm; o critério por resposta traz as notas dele. As contagens são a soma das ' +
@@ -50,17 +42,6 @@ export const QUALITY_MATRIX_LEGEND =
 
 export const QUALITY_SERIES_HINT =
   `A distribuição das notas de cada rodada das Fases ${PHASE_3} e ${PHASE_4}, um ponto por rodada.`
-
-export const QUALITY_SERIES_POINTS: readonly string[] = [
-  `Cada ponto é a ${QUALITY_LABEL} de uma rodada inteira, da Fase ${PHASE_3} ou da ` +
-    `Fase ${PHASE_4}, ao lado das versões de codebook e de prompt que ela fixou: o número ` +
-    'descreve essa combinação de versões, e só ela.',
-  'Nenhum valor junta rodadas: nada é somado nem tirado a média entre elas. As rodadas da ' +
-    `Fase ${PHASE_2} não entram.`,
-  'Com avaliador marcado como outlier, o ponto da rodada traz também o valor ' +
-    `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}, depois do ${AGREEMENT_ALL_LABEL}. Na Fase ${PHASE_4}, ` +
-    'cada ponto se lê ao lado da sua rodada de referência, na tela de rodadas.',
-]
 
 export const QUALITY_SERIES_NOTE =
   'Um ponto por rodada, e nenhum valor que junte rodadas: cada distribuição descreve as ' +

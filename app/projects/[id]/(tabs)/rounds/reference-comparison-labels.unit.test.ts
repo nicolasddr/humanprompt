@@ -4,7 +4,6 @@ import {
   COMPARISON_EMPTY,
   COMPARISON_TOTAL_ROW,
   REFERENCE_COMPARISON_HELP,
-  REFERENCE_COMPARISON_POINTS,
   closedOn,
   comparedPhase,
   comparedVersions,
@@ -289,17 +288,10 @@ describe('app/projects/[id]/rounds/reference-comparison-labels — cabeçalho', 
 })
 
 describe('app/projects/[id]/rounds/reference-comparison-labels — a ajuda da comparação', () => {
-  it('o ⓘ define a rodada de referência, e o resto vira tópicos', () => {
+  it('o ⓘ define a rodada de referência', () => {
     expect(REFERENCE_COMPARISON_HELP.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(25)
     expect(REFERENCE_COMPARISON_HELP).toContain(
       'a que validou as versões de codebook e de prompt que a Fase 4 testa',
     )
-
-    expect(REFERENCE_COMPARISON_POINTS.length).toBeGreaterThanOrEqual(1)
-    expect(REFERENCE_COMPARISON_POINTS.length).toBeLessThanOrEqual(3)
-    const points = REFERENCE_COMPARISON_POINTS.join(' ')
-    expect(points).toContain('mesmo cálculo da lista de rodadas')
-    expect(points).toContain('as suas marcas de outlier')
-    expect(points).toContain('A ferramenta não diz se a diferença basta: quem lê é você.')
   })
 })

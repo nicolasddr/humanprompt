@@ -2,11 +2,6 @@ import { participationLabel, type RoundMark, type RoundTag } from '../../round-u
 
 export const PARTICIPATED_BEFORE = 'Já avaliou antes'
 
-export const PARTICIPATION_HELP =
-  'A marca "Já avaliou antes" mostra em quais rodadas anteriores a esta cada ' +
-  'avaliador já enviou avaliação. Ela não impede ninguém de avaliar: para tirar do ' +
-  'cálculo quem já tinha avaliado antes, use a marca de outlier nesta rodada.'
-
 export function participationBefore(
   participation: ReadonlyMap<string, readonly RoundTag[]>,
   roundNumber: number,

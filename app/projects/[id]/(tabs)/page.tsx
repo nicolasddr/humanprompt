@@ -57,9 +57,7 @@ import {
 import { hasQuality, qualityPair, type QualityPair } from './rounds/quality'
 import {
   QUALITY_HINT,
-  QUALITY_POINTS,
   QUALITY_SERIES_HINT,
-  QUALITY_SERIES_POINTS,
 } from './rounds/quality-labels'
 import { QualityPanel } from './rounds/quality-panel'
 import { qualitySeries } from './rounds/quality-series'
@@ -536,7 +534,6 @@ export default async function ProjectPage({
                   : `Qualidade na rodada ${focus.roundNumber}`
               }
               hint={QUALITY_HINT}
-              more={{ points: QUALITY_POINTS }}
             >
               <QualityPanel pair={focusQuality} />
             </Section>
@@ -546,7 +543,6 @@ export default async function ProjectPage({
             <Section
               title="Qualidade por rodada"
               hint={QUALITY_SERIES_HINT}
-              more={{ points: QUALITY_SERIES_POINTS }}
             >
               <QualitySeriesList points={qualityPoints} />
             </Section>

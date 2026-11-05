@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   AGREEMENT_ALL_LABEL,
   AGREEMENT_BANDS,
-  AGREEMENT_WITHOUT_OUTLIERS_LABEL,
   AGREEMENT_SOURCE,
   BAND_REFERENCE,
   BAND_REFERENCE_LABEL,
@@ -16,7 +15,6 @@ import {
   CONCENTRATION_HELP,
   MATRIX_OUTLIERS_NOTE,
   MATRIX_PER_RESPONSE_LEGEND,
-  OUTLIER_PAIR_POINTS,
   OUTLIER_PAIR_RESULT,
   OUTLIER_PAIR_SUMMARY,
   SMALL_SAMPLE_HELP,
@@ -112,19 +110,10 @@ describe('app/projects/[id]/rounds/agreement-labels — o coeficiente na tela', 
     expect(OUTLIER_PAIR_SUMMARY).toContain(AGREEMENT_ALL_LABEL)
   })
 
-  it('o ⓘ do par fica com uma frase, e o resto da explicação vira tópicos curtos', () => {
+  it('o ⓘ do par fica com uma frase', () => {
     expect(labels).not.toHaveProperty('OUTLIER_PAIR_HINT')
     expect(wordsOf(OUTLIER_PAIR_SUMMARY)).toBeLessThanOrEqual(25)
     expect(OUTLIER_PAIR_SUMMARY).toContain('saem do mesmo dado desta rodada')
-
-    expect(OUTLIER_PAIR_POINTS.length).toBeGreaterThanOrEqual(1)
-    expect(OUTLIER_PAIR_POINTS.length).toBeLessThanOrEqual(3)
-    const points = OUTLIER_PAIR_POINTS.join(' ')
-    expect(points).toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
-    expect(points).toContain('o quanto a exclusão move o número')
-    expect(points).toContain('declarada e justificada uma a uma')
-    expect(points).toContain('nunca sugerida pela ferramenta')
-    expect(points).toContain('nenhuma nota é apagada')
   })
 
   it('o N sai em notas e avaliadores, no singular quando é um só', () => {

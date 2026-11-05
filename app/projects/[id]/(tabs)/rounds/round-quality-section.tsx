@@ -6,7 +6,7 @@ import { matrixColumns } from './agreement-matrix'
 import { ByDefinition } from './by-definition'
 import { CriterionQualityTable } from './criterion-quality-table'
 import { hasQuality, qualityPair } from './quality'
-import { QUALITY_HINT, QUALITY_POINTS } from './quality-labels'
+import { QUALITY_HINT } from './quality-labels'
 import { QualityMatrixNotes, QualityMatrixTable } from './quality-matrix-table'
 import { QualityPanel } from './quality-panel'
 import { QUALITY_SECTION_ID } from './reading-guidance'
@@ -49,7 +49,6 @@ export function roundQualitySection({
       className="scroll-mt-6"
       title={qualitySectionTitle(round)}
       hint={QUALITY_HINT}
-      more={{ points: QUALITY_POINTS }}
     >
       <div className="flex flex-col gap-4">
         <QualityPanel pair={qualityPair(observations, excluded)} />

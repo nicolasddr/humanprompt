@@ -84,9 +84,6 @@ export const ITEM_FILE_LIMIT_LABEL = `${megabytes(ITEM_FILE_BYTES_MAX)} MB`
 
 export const ITEM_FILE_FORMATS = `Formatos de texto (${TEXT_FILE_EXAMPLES}) e arquivos de código, até ${ITEM_FILE_LIMIT_LABEL}.`
 
-export const ITEM_FILE_NOTE =
-  'Um arquivo só entra no formulário e continua editável antes de cadastrar. Vários arquivos de uma vez viram um item cada, com o nome do arquivo como título. O arquivo em si não é guardado.'
-
 const FORMAT_REFUSED =
   `Este formato de arquivo não é aceito. Envie um arquivo de texto (${TEXT_FILE_EXAMPLES}) ` +
   'ou um arquivo de código, ou cole o conteúdo direto no campo.'

@@ -59,7 +59,6 @@ import {
   QualitySummary,
 } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
 import {
-  QUALITY_POINTS,
   QUALITY_HINT,
   QUALITY_CRITERION_LEGEND,
   QUALITY_MATRIX_LEGEND,
@@ -80,7 +79,6 @@ import {
   CELL_UNRATED_LABEL,
   MATRIX_OUTLIERS_NOTE,
   MATRIX_PER_RESPONSE_LEGEND,
-  OUTLIER_PAIR_POINTS,
   OUTLIER_PAIR_RESULT,
   OUTLIER_PAIR_SUMMARY,
   SAMPLE_ALL_LABEL,
@@ -96,8 +94,6 @@ import { Section } from '@/app/components/ui/section'
 import { Disclosure } from '@/app/components/ui/disclosure'
 import { ByDefinition } from './by-definition'
 import {
-  DEACTIVATED_HELP,
-  EFFORT_MORE_SUMMARY,
   EffortList,
 } from '@/app/projects/[id]/(tabs)/rounds/effort-list'
 import { ButtonLink, buttonClass } from '@/app/components/ui/button'
@@ -117,7 +113,6 @@ import {
   ITEM_ROUNDS_HELP,
   pendingEvaluatorsTitle,
   RESPONSES_LEFT_HELP,
-  RESPONSES_LEFT_POINTS,
   roundBlockerHelp,
   roundBlockerMessage,
   roundBlockerSummary,
@@ -1207,7 +1202,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(roundBlockerMessage(phaseBlocker!)).toContain(`Fase ${PHASE_2}`)
   })
 
-  it('na Nova rodada, cada ⓘ fica em até 25 palavras, e a seção leva o resto num "Saiba mais"', async () => {
+  it('na Nova rodada, cada ⓘ fica em até 25 palavras, e a seção não tem "Saiba mais"', async () => {
     const admin = await newUser('Admin')
     const blocked = await readyProject(admin, PHASE_1)
     const ready = await readyProject(admin, PHASE_2)
@@ -1240,11 +1235,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     }
     expect(section.help.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(25)
     expect(section.help).toContain('A rodada é a unidade de coleta')
-    const points = section.more!.points.join(' ')
-    expect(points).toContain('passa a produzir dado de pesquisa')
-    expect(points).toContain('aponta para um codebook e um prompt que não mudam mais')
-    expect(points).toContain('Só existe uma rodada aberta por projeto')
-    expect(points).toContain('o codebook completo e uma versão de prompt escrita')
+    expect(section.more).toBeUndefined()
   })
 
   it('na Fase 4, com as versões da rodada de referência, a nova rodada fica liberada, e as rodadas da Fase 3 continuam listadas com a Qualidade', async () => {
@@ -1450,7 +1441,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     )
     expect(tooltips).toEqual([RESPONSES_LEFT_HELP, ITEM_ROUNDS_HELP])
     expect(RESPONSES_LEFT_HELP.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(25)
-    for (const point of RESPONSES_LEFT_POINTS) expect(markup).toContain(point)
+    expect(markup).not.toContain('Sobre o teto de respostas')
   })
 
   it('com rodada aberta, a aba começa pelo cartão da rodada, com as duas ações lado a lado', async () => {
@@ -1937,10 +1928,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(visible).toContain(OUTLIER_PAIR_RESULT)
     expect(visible).not.toContain(OUTLIER_PAIR_SUMMARY)
     expect(tooltipTextsOf(AgreementNotes(props)!)).toContain(OUTLIER_PAIR_SUMMARY)
-    expect(learnMoreOf(AgreementNotes(props)!)).toEqual([{ points: OUTLIER_PAIR_POINTS }])
-    expect(glanceTextOf(createElement(AgreementNotes, props))).not.toContain(
-      OUTLIER_PAIR_POINTS[0],
-    )
+    expect(learnMoreOf(AgreementNotes(props)!)).toEqual([])
   })
 
   it('a matriz por célula não traz nota sobre o cálculo com os marcados', async () => {
@@ -1997,9 +1985,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(effortList).toBeTruthy()
     const list = EffortList(effortList!.props as Parameters<typeof EffortList>[0])!
     expect(tooltipTextsOf(list)).toEqual([])
-    expect(learnMoreOf(list)).toEqual([
-      expect.objectContaining({ summary: EFFORT_MORE_SUMMARY, points: [DEACTIVATED_HELP] }),
-    ])
+    expect(learnMoreOf(list)).toEqual([])
   })
 
   it('a lista de rodadas traz o coeficiente ao lado das versões que ele mede', async () => {
@@ -2603,8 +2589,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     const quality = findSection(tree, QualityMatrixTable)!.props as SectionProps
     expect(quality.hint).toBe(QUALITY_HINT)
     expect(quality.help).toBeUndefined()
-    expect(quality.more).toEqual({ points: QUALITY_POINTS })
-    expect(QUALITY_POINTS.join(' ')).not.toContain('distribuição das notas desta rodada')
+    expect(quality.more).toBeUndefined()
   })
 
   it('com a rodada aberta, o ⓘ da Concordância nomeia o coeficiente, e embaixo do título vem a amostra', async () => {

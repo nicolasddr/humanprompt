@@ -67,9 +67,7 @@ import {
 import { QualityPanel } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
 import { QualitySeriesList } from '@/app/projects/[id]/(tabs)/rounds/quality-series-list'
 import {
-  QUALITY_POINTS,
   QUALITY_SERIES_HINT,
-  QUALITY_SERIES_POINTS,
   QUALITY_SERIES_NOTE,
   QUALITY_SERIES_NUMBERS,
 } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
@@ -1704,7 +1702,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
       'Qualidade na rodada 1, fechada',
     )
     expect((section!.props as SectionProps).help).toBeUndefined()
-    expect((section!.props as SectionProps).more).toEqual({ points: QUALITY_POINTS })
+    expect((section!.props as SectionProps).more).toBeUndefined()
     expect(findElement(section, AgreementSeriesChart)).toBeNull()
     expect(sectionWith(tree, AgreementSeriesChart)).not.toBe(section)
     expect(hasProp(section, 'href', `/projects/${project}/rounds`)).toBe(false)
@@ -2354,10 +2352,6 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
 
   it('os textos da série de Qualidade falam das Fases 3 e 4, e não só da Fase 3', async () => {
     expect(QUALITY_SERIES_HINT).toContain(`Fases ${PHASE_3} e ${PHASE_4}`)
-    const points = QUALITY_SERIES_POINTS.join(' ')
-    expect(points).toContain(`da Fase ${PHASE_3} ou da Fase ${PHASE_4}`)
-    expect(points).toContain(`Fase ${PHASE_2} não entram`)
-    expect(points).toContain('ao lado da sua rodada de referência')
 
     const admin = await newUser('Admin')
     const project = await phase4SeriesScene(admin)
@@ -2367,7 +2361,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     const props = section!.props as SectionProps
     expect(props.hint).toBe(QUALITY_SERIES_HINT)
     expect(props.help).toBeUndefined()
-    expect(props.more).toEqual({ points: QUALITY_SERIES_POINTS })
+    expect(props.more).toBeUndefined()
   })
 
   it('o Avaliador não vê as séries num projeto com rodada da Fase 4', async () => {

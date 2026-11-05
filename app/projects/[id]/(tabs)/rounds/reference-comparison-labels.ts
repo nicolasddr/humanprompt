@@ -23,12 +23,6 @@ export const REFERENCE_COMPARISON_HELP =
   'A rodada de referência é a que validou as versões de codebook e de prompt que a Fase 4 ' +
   'testa.'
 
-export const REFERENCE_COMPARISON_POINTS: readonly string[] = [
-  'Os dois lados vêm do mesmo cálculo da lista de rodadas, cada um com as suas notas e as ' +
-    'suas marcas de outlier.',
-  'A ferramenta não diz se a diferença basta: quem lê é você.',
-]
-
 export function referenceComparisonHint(roundNumber: number, referenceNumber: number): string {
   return (
     `A rodada ${roundNumber} ao lado da rodada ${referenceNumber}, a última fechada da ` +

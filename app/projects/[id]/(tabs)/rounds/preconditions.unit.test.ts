@@ -10,7 +10,6 @@ import {
   phase4RoundLockedMessage,
   generationMax,
   RESPONSES_LEFT_HELP,
-  RESPONSES_LEFT_POINTS,
   responsesLeftMessage,
   retryLabel,
   roundBlockerHelp,
@@ -592,16 +591,8 @@ describe('app/projects/[id]/rounds/preconditions — as ajudas em ⓘ cabem em 2
     }
   })
 
-  it('o ⓘ do teto fica com uma frase, e o resto vira tópicos', () => {
+  it('o ⓘ do teto fica com uma frase', () => {
     expect(wordsOf(RESPONSES_LEFT_HELP)).toBeLessThanOrEqual(25)
     expect(RESPONSES_LEFT_HELP).toContain('cada item selecionado gera uma resposta e gasta uma vaga')
-
-    expect(RESPONSES_LEFT_POINTS.length).toBeGreaterThanOrEqual(1)
-    expect(RESPONSES_LEFT_POINTS.length).toBeLessThanOrEqual(3)
-    const points = RESPONSES_LEFT_POINTS.join(' ')
-    expect(points).toContain('todas as rodadas')
-    expect(points).toContain('testes de prompt')
-    expect(points).toContain('não virar fatura')
-    expect(points).toContain('fale com quem cuida da instalação')
   })
 })

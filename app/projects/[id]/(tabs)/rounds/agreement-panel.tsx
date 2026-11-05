@@ -11,7 +11,6 @@ import {
   AGREEMENT_WITHOUT_OUTLIERS_LABEL,
   CELL_UNRATED_LABEL,
   NOT_CALCULABLE_LABEL,
-  OUTLIER_PAIR_POINTS,
   OUTLIER_PAIR_RESULT,
   OUTLIER_PAIR_SUMMARY,
   agreementBand,
@@ -29,7 +28,6 @@ import { Badge } from '@/app/components/ui/badge'
 import { Card } from '@/app/components/ui/card'
 import { Disclosure } from '@/app/components/ui/disclosure'
 import { InfoTooltip } from '@/app/components/ui/tooltip'
-import { LearnMore } from '@/app/components/ui/learn-more'
 import { cx } from '@/app/components/ui/cx'
 import { preWrapClass, scrollBoxClass } from '@/app/components/ui/prose'
 import { formatDate } from '@/app/notifications/labels'
@@ -132,8 +130,6 @@ export function AgreementNotes({
             <span>{OUTLIER_PAIR_RESULT}</span>
             <InfoTooltip text={OUTLIER_PAIR_SUMMARY} />
           </p>
-
-          <LearnMore points={OUTLIER_PAIR_POINTS} />
 
           <ExcludedList outliers={outliers} />
         </>
