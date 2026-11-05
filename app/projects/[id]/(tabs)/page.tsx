@@ -52,7 +52,6 @@ import { concordanceSeries } from './rounds/concordance-series'
 import { ConcordanceSeriesChart } from './rounds/concordance-series-chart'
 import {
   CONCORDANCE_SERIES_HINT,
-  CONCORDANCE_SERIES_POINTS,
   CONCORDANCE_SERIES_TITLE,
 } from './rounds/concordance-series-labels'
 import { hasQuality, qualityPair, type QualityPair } from './rounds/quality'
@@ -62,7 +61,6 @@ import {
   QUALITY_SERIES_HINT,
   QUALITY_SERIES_POINTS,
 } from './rounds/quality-labels'
-import { AGREEMENT_SERIES_POINTS } from './rounds/agreement-labels'
 import { QualityPanel } from './rounds/quality-panel'
 import { qualitySeries } from './rounds/quality-series'
 import { QualitySeriesList } from './rounds/quality-series-list'
@@ -515,8 +513,7 @@ export default async function ProjectPage({
           {series && showSeries ? (
             <Section
               title="Confiabilidade por rodada"
-              hint="Um ponto por rodada, em ordem cronológica."
-              more={{ points: AGREEMENT_SERIES_POINTS }}
+              hint="O α de cada critério, um ponto por rodada, em ordem cronológica."
             >
               <AgreementSeriesChart series={series} />
             </Section>
@@ -526,7 +523,6 @@ export default async function ProjectPage({
             <Section
               title={CONCORDANCE_SERIES_TITLE}
               hint={CONCORDANCE_SERIES_HINT}
-              more={{ points: CONCORDANCE_SERIES_POINTS }}
             >
               <ConcordanceSeriesChart points={concordancePoints} />
             </Section>

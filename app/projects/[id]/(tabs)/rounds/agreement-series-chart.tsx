@@ -1,199 +1,64 @@
 import { Badge } from '@/app/components/ui/badge'
-import { Card } from '@/app/components/ui/card'
 import { EmptyState } from '@/app/components/ui/empty-state'
-import { formatDate } from '@/app/notifications/labels'
 import { PER_RESPONSE_LABEL } from '../../pipeline/criteria'
-import { AgreementValue } from './agreement-panel'
 import {
-  AGREEMENT_ALL_LABEL,
   AGREEMENT_BANDS,
-  BAND_REFERENCE,
-  agreementBand,
-  bandTone,
-  type BandTone,
+  AGREEMENT_SOURCE,
+  BAND_REFERENCE_LABEL,
+  CELL_UNRATED_LABEL,
+  cellNotCalculableLabel,
+  formatAlpha,
+  formatCut,
 } from './agreement-labels'
-import {
-  phaseRuns,
-  type AgreementSeries,
-  type CriterionSeries,
-  type PhaseRun,
-  type SeriesPoint,
-} from './agreement-series'
-import { HowToRead } from './how-to-read'
+import type { MatrixCell } from './agreement-matrix'
+import type { AgreementSeries } from './agreement-series'
+import { LineSeriesChart } from './line-series-chart'
 
-const CHART_HEIGHT = 96
+const GRID = [0, 0.5, 1]
 
-const CHART_WIDTH = 100
+const TICKS = [0, 0.5, AGREEMENT_BANDS.acceptable, AGREEMENT_BANDS.good, 1].map((value) => ({
+  value,
+  label: formatCut(value),
+}))
 
-const COLUMN_RATIO = 0.55
-
-const SLOT_MAX_PX = 120
-
-const OUTLIER_MARK_HEIGHT = 2
-
-const OUTLIER_MARK_LABEL = 'Com exclusão'
-
-const OUTLIER_MARK_TITLE =
-  'Nesta rodada há avaliador marcado como outlier. A coluna continua sendo o valor ' +
-  `${AGREEMENT_ALL_LABEL}; o par com e sem os marcados está na lista de rodadas.`
-
-const OUTLIER_SERIES_NOTE =
-  `A série desenha sempre o valor ${AGREEMENT_ALL_LABEL}, porque cada rodada tem o seu ` +
-  'próprio conjunto de marcados e os valores filtrados não seriam comparáveis entre si. ' +
-  `A marca “${OUTLIER_MARK_LABEL}” diz quais rodadas têm exclusão; o par com e sem os ` +
-  'marcados aparece em cada rodada.'
-
-const CRITERION_SERIES_NOTE =
-  'Um gráfico por critério, porque o α mede um critério de cada vez. As rodadas se ligam ' +
-  'pelo nome e pelo tipo do critério, já que cada versão do codebook cria critérios novos; ' +
-  'a rodada cuja versão não tem o critério fica vazia no gráfico dele.'
-
-const columnFill: Record<BandTone, string> = {
-  success: 'fill-success-fg',
-  warning: 'fill-warning-fg',
-  danger: 'fill-danger-fg',
+const REFERENCE = {
+  values: [AGREEMENT_BANDS.acceptable, AGREEMENT_BANDS.good],
+  label:
+    `${BAND_REFERENCE_LABEL} de ${AGREEMENT_SOURCE}: ` +
+    `${formatCut(AGREEMENT_BANDS.acceptable)} e ${formatCut(AGREEMENT_BANDS.good)}`,
 }
 
-function cutLine(cut: number): number {
-  return CHART_HEIGHT - cut * CHART_HEIGHT
+const CRITERION_COLORS = [
+  { stroke: 'stroke-series-1', swatch: 'bg-series-1' },
+  { stroke: 'stroke-series-2', swatch: 'bg-series-2' },
+  { stroke: 'stroke-series-3', swatch: 'bg-series-3' },
+  { stroke: 'stroke-series-4', swatch: 'bg-series-4' },
+  { stroke: 'stroke-series-5', swatch: 'bg-series-5' },
+] as const
+
+function alphaOf(cell: MatrixCell | null): number | null {
+  return cell?.state === 'calculated' && cell.agreement.calculable
+    ? cell.agreement.alpha
+    : null
 }
 
-function phaseBoundaries(runs: readonly PhaseRun<SeriesPoint>[]): number[] {
-  const boundaries: number[] = []
-  let index = 0
-  for (const run of runs) {
-    if (index > 0) boundaries.push(index)
-    index += run.points.length
-  }
-  return boundaries
+function cellText(cell: MatrixCell | null): string | null {
+  if (!cell || cell.state === 'not_applicable') return null
+  if (cell.state === 'unrated') return CELL_UNRATED_LABEL
+  return cell.agreement.calculable
+    ? formatAlpha(cell.agreement.alpha)
+    : cellNotCalculableLabel(cell.agreement.reason)
 }
 
-function SeriesColumns({
-  points,
-  runs,
-}: {
-  points: SeriesPoint[]
-  runs: PhaseRun<SeriesPoint>[]
-}) {
-  const slot = CHART_WIDTH / points.length
-  const columnWidth = slot * COLUMN_RATIO
-
-  return (
-    <div
-      className="flex w-full flex-col gap-1"
-      style={{ maxWidth: `${points.length * SLOT_MAX_PX}px` }}
-    >
-      <svg
-        aria-hidden
-        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT + 1}`}
-        preserveAspectRatio="none"
-        className="h-24 w-full"
-      >
-        {[AGREEMENT_BANDS.acceptable, AGREEMENT_BANDS.good].map((cut) => (
-          <line
-            key={cut}
-            x1={0}
-            x2={CHART_WIDTH}
-            y1={cutLine(cut)}
-            y2={cutLine(cut)}
-            strokeDasharray="4 4"
-            vectorEffect="non-scaling-stroke"
-            className="stroke-line-strong"
-          />
-        ))}
-
-        <line
-          x1={0}
-          x2={CHART_WIDTH}
-          y1={CHART_HEIGHT}
-          y2={CHART_HEIGHT}
-          vectorEffect="non-scaling-stroke"
-          className="stroke-line-strong"
-        />
-
-        {phaseBoundaries(runs).map((index) => (
-          <line
-            key={`phase-${index}`}
-            x1={index * slot}
-            x2={index * slot}
-            y1={0}
-            y2={CHART_HEIGHT}
-            strokeDasharray="4 4"
-            vectorEffect="non-scaling-stroke"
-            className="stroke-line-strong"
-          />
-        ))}
-
-        {points.map((point, index) => {
-          const x = index * slot + (slot - columnWidth) / 2
-          const agreement = point.cell?.state === 'calculated' ? point.cell.agreement : null
-          const height = agreement?.calculable
-            ? Math.max(0, Math.min(1, agreement.alpha)) * CHART_HEIGHT
-            : 0
-
-          return (
-            <g key={point.roundId}>
-              {agreement?.calculable ? (
-                <rect
-                  x={x}
-                  y={CHART_HEIGHT - height}
-                  width={columnWidth}
-                  height={height}
-                  className={columnFill[bandTone(agreementBand(agreement.alpha))]}
-                />
-              ) : null}
-
-              {point.hasOutlier ? (
-                <rect
-                  x={x}
-                  y={Math.max(0, CHART_HEIGHT - height - OUTLIER_MARK_HEIGHT * 2)}
-                  width={columnWidth}
-                  height={OUTLIER_MARK_HEIGHT}
-                  className="fill-warning-fg"
-                >
-                  <title>{OUTLIER_MARK_TITLE}</title>
-                </rect>
-              ) : null}
-            </g>
-          )
-        })}
-      </svg>
-
-      <div aria-hidden className="flex w-full text-xs text-muted">
-        {runs.map((run) => (
-          <span
-            key={run.points[0].roundId}
-            className="min-w-0 text-center"
-            style={{ flex: run.points.length }}
-          >
-            Fase {run.phase}
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function CriterionChart({ series }: { series: CriterionSeries }) {
-  const { column, points } = series
-
-  return (
-    <figure className="m-0 flex flex-col gap-2">
-      <figcaption className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
-        {column.name}
-        {column.isGeneral ? <Badge tone="neutral">Geral</Badge> : null}
-        {column.isPerResponse ? <Badge tone="neutral">{PER_RESPONSE_LABEL}</Badge> : null}
-      </figcaption>
-      <SeriesColumns points={points} runs={phaseRuns(points)} />
-    </figure>
-  )
-}
-
-function roundValues(series: AgreementSeries, index: number) {
-  return series.criteria.flatMap(({ column, points }) => {
-    const cell = points[index].cell
-    return cell ? [{ column, cell, withoutOutliers: null }] : []
+function roundLabel(series: AgreementSeries, index: number): string {
+  const round = series.rounds[index]
+  const values = series.criteria.flatMap(({ column, points }) => {
+    const text = cellText(points[index].cell)
+    return text ? [`${column.name} ${text}`] : []
   })
+  return values.length > 0
+    ? `Rodada ${round.roundNumber}: ${values.join(', ')}`
+    : `Rodada ${round.roundNumber}: sem critério avaliado`
 }
 
 export function AgreementSeriesChart({ series }: { series: AgreementSeries }) {
@@ -208,67 +73,31 @@ export function AgreementSeriesChart({ series }: { series: AgreementSeries }) {
     )
   }
 
-  const runs = phaseRuns(rounds)
-  const values = new Map(
-    rounds.map((round, index) => [round.roundId, roundValues(series, index)]),
-  )
-
   return (
-    <div className="flex flex-col gap-3">
-      {criteria.map((criterion) => (
-        <CriterionChart key={criterion.key} series={criterion} />
-      ))}
-
-      {runs.map((run) => (
-        <div key={run.points[0].roundId} className="flex flex-col gap-2">
-          <h3 className="m-0 text-[13px] font-semibold text-ink">Fase {run.phase}</h3>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
-            {run.points.map((point) => (
-              <li key={point.roundId}>
-                <Card tone="subtle" padding="sm">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                    <span className="text-sm font-semibold text-ink">
-                      Rodada {point.roundNumber}
-                    </span>
-                    <span className="text-[13px] text-muted">
-                      Codebook v{point.codebookVersionNumber} · Fase {point.phase}
-                    </span>
-                    {point.closedAt ? (
-                      <span className="text-[13px] text-muted">
-                        fechada em {formatDate(point.closedAt)}
-                      </span>
-                    ) : (
-                      <Badge tone="info">Aberta</Badge>
-                    )}
-                    {point.hasOutlier ? (
-                      <span title={OUTLIER_MARK_TITLE}>
-                        <Badge tone="warning">{OUTLIER_MARK_LABEL}</Badge>
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <AgreementValue rows={values.get(point.roundId) ?? []} />
-                </Card>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-
-      <p className="m-0 text-xs text-muted">
-        {rounds.length === 1
-          ? 'Um ponto por rodada, e nenhum valor que junte rodadas: a comparação começa na segunda rodada.'
-          : 'Um ponto por rodada, e nenhum valor que junte rodadas: cada coeficiente mede a versão de codebook e a fase indicadas ao lado dele.'}
-      </p>
-
-      <HowToRead
-        summary="Como ler este gráfico"
-        paragraphs={
-          rounds.some((point) => point.hasOutlier)
-            ? [CRITERION_SERIES_NOTE, BAND_REFERENCE, OUTLIER_SERIES_NOTE]
-            : [CRITERION_SERIES_NOTE, BAND_REFERENCE]
+    <LineSeriesChart
+      points={rounds}
+      grid={GRID}
+      ticks={TICKS}
+      reference={REFERENCE}
+      lines={criteria.map(({ key, column, points }, index) => {
+        const color = CRITERION_COLORS[index % CRITERION_COLORS.length]
+        return {
+          key,
+          label: (
+            <span className="flex items-center gap-1.5">
+              {column.name}
+              {column.isGeneral ? <Badge tone="neutral">Geral</Badge> : null}
+              {column.isPerResponse ? (
+                <Badge tone="neutral">{PER_RESPONSE_LABEL}</Badge>
+              ) : null}
+            </span>
+          ),
+          strokeClass: color.stroke,
+          swatchClass: color.swatch,
+          values: points.map((point) => alphaOf(point.cell)),
         }
-      />
-    </div>
+      })}
+      pointLabel={(index) => roundLabel(series, index)}
+    />
   )
 }

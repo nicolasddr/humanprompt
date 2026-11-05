@@ -63,6 +63,12 @@
   --color-quality-medium: #6b8fd6;
   --color-quality-low: #c9d6f2;
 
+  --color-series-1: #2563eb;
+  --color-series-2: #db2777;
+  --color-series-3: #0d9488;
+  --color-series-4: #7c3aed;
+  --color-series-5: #475569;
+
   --radius-control: 8px;
   --radius-card: 12px;
 }

@@ -1,6 +1,5 @@
 import { plural } from '@/lib/plural'
 import type { Agreement, AgreementProfile, NotCalculableReason } from '@/lib/agreement'
-import { PHASE_2, PHASE_3, PHASE_4 } from '../../pipeline/preconditions'
 import { PER_RESPONSE_LABEL } from '../../pipeline/criteria'
 import { SCALE, scaleLabel, scaleRank, type ScaleValue } from '../evaluate/scale'
 import { formatShare } from './share'
@@ -86,16 +85,6 @@ export const OUTLIER_PAIR_POINTS: readonly string[] = [
     'nenhuma nota é apagada por causa dela.',
 ]
 
-export const AGREEMENT_SERIES_POINTS: readonly string[] = [
-  'Cada ponto traz a versão de codebook que a rodada fixou e a fase em que ela foi aberta. ' +
-    `As Fases ${PHASE_2}, ${PHASE_3} e ${PHASE_4} ficam na mesma série.`,
-  `Da última rodada da Fase ${PHASE_2} para a primeira da Fase ${PHASE_3}, com a mesma ` +
-    'versão de codebook, a diferença mostra o efeito de a LLM passar a receber o codebook.',
-  `Na Fase ${PHASE_3}, o codebook refinado deve aparecer como confiabilidade maior na rodada ` +
-    `seguinte. Na Fase ${PHASE_4}, codebook e prompt não mudam: mudam os itens e os ` +
-    'avaliadores, e cada rodada se lê ao lado da sua rodada de referência.',
-]
-
 export const BAND_REFERENCE_LABEL = 'Faixa de referência'
 
 export const BAND_REFERENCE =
@@ -124,7 +113,7 @@ export function matrixVersionNote(codebookVersionNumber: number): string {
   )
 }
 
-function formatCut(cut: number): string {
+export function formatCut(cut: number): string {
   return String(cut).replace('.', ',')
 }
 

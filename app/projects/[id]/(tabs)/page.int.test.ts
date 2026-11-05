@@ -63,9 +63,7 @@ import { AgreementSeriesChart } from '@/app/projects/[id]/(tabs)/rounds/agreemen
 import { ConcordanceSeriesChart } from '@/app/projects/[id]/(tabs)/rounds/concordance-series-chart'
 import {
   CONCORDANCE_SERIES_HINT,
-  CONCORDANCE_SERIES_POINTS,
 } from '@/app/projects/[id]/(tabs)/rounds/concordance-series-labels'
-import { HowToRead } from '@/app/projects/[id]/(tabs)/rounds/how-to-read'
 import { QualityPanel } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
 import { QualitySeriesList } from '@/app/projects/[id]/(tabs)/rounds/quality-series-list'
 import {
@@ -83,7 +81,6 @@ import { ButtonLink } from '@/app/components/ui/button'
 import {
   AGREEMENT_ALL_LABEL,
   AGREEMENT_BANDS,
-  AGREEMENT_SERIES_POINTS,
   AGREEMENT_WITHOUT_OUTLIERS_LABEL,
   BAND_REFERENCE,
   CELL_UNRATED_LABEL,
@@ -373,10 +370,9 @@ function seriesMarkupOf(tree: unknown): string {
 }
 
 function seriesTextOf(tree: unknown): string {
-  return seriesMarkupOf(tree)
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+  const label = seriesMarkupOf(tree).match(/<svg role="img" aria-label="([^"]*)"/)
+  expect(label).toBeTruthy()
+  return label![1]
 }
 
 function qualityOf(tree: unknown): QualityProps {
@@ -2042,8 +2038,6 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     const text = seriesTextOf(tree)
     expect(text).toContain(`Clareza ${formatAlpha(first.alpha)}`)
     expect(text).toContain(`Clareza ${formatAlpha(second.alpha)}`)
-    expect(text).toContain('Codebook v1')
-    expect(text).toContain('Codebook v2')
 
     const mean = (first.alpha + second.alpha) / 2
     expect(text).not.toContain(formatAlpha(mean))
@@ -2070,36 +2064,19 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(text).not.toContain('0,000')
   })
 
-  it('a legenda da série de Confiabilidade fica em "Como ler este gráfico", fechado, e a nota de exclusão só entra com marcado', async () => {
+  it('a série de Confiabilidade desenha uma linha por critério, com a faixa de referência na legenda e sem "Como ler"', async () => {
     const admin = await newUser('Admin')
-    const { project, bruno, third } = await qualitySeriesScene(admin)
+    const { project } = await qualitySeriesScene(admin)
 
     auth.userId = admin
-    const before = seriesOf(await render(project))
-    const plain = findElement(AgreementSeriesChart(before), HowToRead)
-    expect(findElement(AgreementSeriesChart(before), InfoTooltip)).toBeNull()
-    expect(plain).toBeTruthy()
-    expect((plain!.props as { summary: string }).summary).toBe('Como ler este gráfico')
-    const plainParagraphs = (plain!.props as { paragraphs: string[] }).paragraphs
-    expect(plainParagraphs).toHaveLength(2)
-    expect(plainParagraphs[0]).toContain('Um gráfico por critério')
-    expect(plainParagraphs[1]).toBe(BAND_REFERENCE)
+    const tree = await render(project)
+    const markup = seriesMarkupOf(tree)
+    const { criteria } = seriesOf(tree).series
 
-    await addOutlier(ownerDb, third, bruno, admin)
-    const after = seriesOf(await render(project))
-    const marked = findElement(AgreementSeriesChart(after), HowToRead)
-    const paragraphs = (marked!.props as { paragraphs: string[] }).paragraphs
-    expect(paragraphs).toHaveLength(3)
-    expect(paragraphs[0]).toBe(plainParagraphs[0])
-    expect(paragraphs[1]).toBe(BAND_REFERENCE)
-    expect(paragraphs[2]).toContain('A série desenha sempre o valor com todos')
-
-    const markup = renderToStaticMarkup(createElement(AgreementSeriesChart, after))
-    expect(markup).toContain('Como ler este gráfico')
-    expect(markup).not.toMatch(/<details[^>]*\sopen/)
-    expect(textOfMarkup(markup)).toContain(
-      'Um ponto por rodada, e nenhum valor que junte rodadas',
-    )
+    expect(markup.match(/<polyline/g)).toHaveLength(criteria.length)
+    expect(textOfMarkup(markup)).toContain('Faixa de referência de Krippendorff (2004): 0,667 e 0,8')
+    expect(markup).not.toContain('<details')
+    expect(markup).not.toContain('Como ler este gráfico')
   })
 
   it('os pontos da série aparecem em ordem cronológica', async () => {
@@ -2203,7 +2180,9 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
   }
 
   function phaseLabels(markup: string): string {
-    return markupText(markup.slice(markup.indexOf('</figcaption>'), markup.indexOf('<h3')))
+    const row = markup.match(/text-faint">(.*?)<\/div>/)
+    expect(row).toBeTruthy()
+    return markupText(row![1])
   }
 
   it('o Administrador vê a Concordância por rodada depois da Confiabilidade, com um ponto por rodada', async () => {
@@ -2226,7 +2205,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     const props = sectionWith(tree, ConcordanceSeriesChart)!.props as SectionProps
     expect(props.title).toBe('Concordância por rodada')
     expect(props.hint).toBe(CONCORDANCE_SERIES_HINT)
-    expect(props.more).toEqual({ points: CONCORDANCE_SERIES_POINTS })
+    expect(props.more).toBeUndefined()
 
     const page = deepText(tree)
     expect(page.indexOf('Confiabilidade por rodada')).toBeLessThan(
@@ -2234,7 +2213,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     )
   })
 
-  it('cada card da série diz a fase ao lado da versão de codebook', async () => {
+  it('o gráfico de Confiabilidade rotula cada rodada embaixo das linhas, sem "Saiba mais"', async () => {
     const admin = await newUser('Admin')
     const project = await phaseSeriesScene(admin)
 
@@ -2243,48 +2222,13 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
 
     expect(seriesOf(tree).series.rounds.map((round) => round.phase)).toEqual([2, 2, 3, 3])
 
-    const text = seriesTextOf(tree)
-    expect(text).toContain('Codebook v1 · Fase 2')
-    expect(text).toContain('Codebook v2 · Fase 2')
-    expect(text).toContain('Codebook v2 · Fase 3')
-    expect(text).toContain('Codebook v3 · Fase 3')
-    expect(text).toContain('a versão de codebook e a fase indicadas ao lado dele')
+    const markup = seriesMarkupOf(tree)
+    expect(markupText(markup)).toContain('R1 R2 R3 R4 Fase 2 Fase 3')
 
     const props = sectionWith(tree, AgreementSeriesChart)!.props as SectionProps
-    expect(props.hint).toBe('Um ponto por rodada, em ordem cronológica.')
+    expect(props.hint).toBe('O α de cada critério, um ponto por rodada, em ordem cronológica.')
     expect(props.help).toBeUndefined()
-    expect(props.more).toEqual({ points: AGREEMENT_SERIES_POINTS })
-    const points = AGREEMENT_SERIES_POINTS.join(' ')
-    expect(points).toContain('As Fases 2, 3 e 4 ficam na mesma série')
-    expect(points).toContain('a LLM passar a receber o codebook')
-  })
-
-  it('as rodadas de cada fase ficam agrupadas, na ordem cronológica, sob o subtítulo da fase', async () => {
-    const admin = await newUser('Admin')
-    const project = await phaseSeriesScene(admin)
-
-    auth.userId = admin
-    const markup = seriesMarkupOf(await render(project))
-
-    const groups = markup.split('<h3').slice(1)
-    expect(groups).toHaveLength(2)
-
-    const [phase2, phase3] = groups.map((group) =>
-      markupText(`<h3${group.slice(0, group.indexOf('</ul>'))}`),
-    )
-    expect(phase2.startsWith('Fase 2')).toBe(true)
-    expect(phase2).toContain('Rodada 1')
-    expect(phase2).toContain('Rodada 2')
-    expect(phase2).not.toContain('Rodada 3')
-    expect(phase2).not.toContain('Rodada 4')
-    expect(phase3.startsWith('Fase 3')).toBe(true)
-    expect(phase3).toContain('Rodada 3')
-    expect(phase3).toContain('Rodada 4')
-    expect(phase3).not.toContain('Rodada 1')
-    expect(phase3).not.toContain('Rodada 2')
-
-    const text = markupText(markup)
-    expect(text.indexOf('Rodada 2')).toBeLessThan(text.lastIndexOf('Fase 3 Rodada 3'))
+    expect(props.more).toBeUndefined()
   })
 
   it('o gráfico separa as fases com uma divisória e rotula cada grupo embaixo das colunas', async () => {
@@ -2312,20 +2256,18 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
 
     expect(phaseDividers(markup)).toBe(0)
     expect(phaseLabels(markup)).toBe('Fase 2')
-    expect(markup.split('<h3')).toHaveLength(2)
   })
 
-  it('agrupar por fase não junta rodadas: um card por rodada e nenhum valor por fase', async () => {
+  it('agrupar por fase não junta rodadas: um ponto por rodada e nenhum valor por fase', async () => {
     const admin = await newUser('Admin')
     const project = await phaseSeriesScene(admin)
 
     auth.userId = admin
     const tree = await render(project)
-    const markup = seriesMarkupOf(tree)
 
     expect(seriesOf(tree).series.rounds).toHaveLength(4)
 
-    const text = markupText(markup)
+    const text = seriesTextOf(tree)
     expect(text.match(/Rodada \d/g)).toEqual(['Rodada 1', 'Rodada 2', 'Rodada 3', 'Rodada 4'])
     expect(text).not.toContain('média')
     expect(text).not.toContain('total')
@@ -2373,27 +2315,6 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     const markup = seriesMarkupOf(tree)
     expect(phaseDividers(markup)).toBe(2)
     expect(phaseLabels(markup)).toBe('Fase 2 Fase 3 Fase 4')
-
-    const groups = markup.split('<h3').slice(1)
-    expect(groups).toHaveLength(3)
-    const phase4 = markupText(`<h3${groups[2].slice(0, groups[2].indexOf('</ul>'))}`)
-    expect(phase4.startsWith('Fase 4')).toBe(true)
-    expect(phase4).toContain('Rodada 4')
-    expect(phase4).not.toContain('Rodada 3')
-  })
-
-  it('o texto de ajuda da série de Confiabilidade explica a Fase 4', async () => {
-    const admin = await newUser('Admin')
-    const project = await phase4SeriesScene(admin)
-
-    auth.userId = admin
-    const tree = await render(project)
-
-    const { more } = sectionWith(tree, AgreementSeriesChart)!.props as SectionProps
-    const points = more!.points.join(' ')
-    expect(points).toContain('As Fases 2, 3 e 4 ficam na mesma série')
-    expect(points).toContain('Na Fase 4, codebook e prompt não mudam')
-    expect(points).toContain('ao lado da sua rodada de referência')
   })
 
   it('a série de Qualidade cobre as Fases 3 e 4, com a fase de cada ponto e um grupo por fase', async () => {
