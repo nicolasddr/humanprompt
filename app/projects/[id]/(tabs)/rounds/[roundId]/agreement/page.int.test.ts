@@ -32,7 +32,10 @@ import { Tab } from '@/app/components/ui/tabs'
 import { Section } from '@/app/components/ui/section'
 import { loadCodebookVersion } from '@/app/projects/[id]/pipeline/codebook'
 import { resolveCells } from '@/app/projects/[id]/pipeline/criteria'
-import { PHASE_3 } from '@/app/projects/[id]/pipeline/preconditions'
+import { PHASE_2, PHASE_3 } from '@/app/projects/[id]/pipeline/preconditions'
+import { QUALITY_SECTION_ID } from '@/app/projects/[id]/(tabs)/rounds/reading-guidance'
+import { QualityPanel } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
+import { qualityPair } from '@/app/projects/[id]/(tabs)/rounds/quality'
 import { ownerDb } from '@/lib/db'
 import {
   createUser,
@@ -67,6 +70,12 @@ function agreementSectionOf(tree: unknown): ReactElement {
   )
   expect(sections).toHaveLength(1)
   return sections[0]
+}
+
+function qualitySectionsOf(tree: unknown): ReactElement[] {
+  return findAll(tree, Section).filter(
+    (section) => (section.props as { id?: string }).id === QUALITY_SECTION_ID,
+  )
 }
 
 function titleOf(section: ReactElement): unknown {
@@ -104,11 +113,9 @@ describe('app/projects/[id]/rounds/[roundId]/agreement — a concordância de um
     return id
   }
 
-  async function scene(): Promise<Scene> {
+  async function scene(phase: number = PHASE_3): Promise<Scene> {
     const admin = await newUser('Admin')
-    const project = await seedProject(ownerDb, admin, 'Projeto de Teste', {
-      phase: PHASE_3,
-    })
+    const project = await seedProject(ownerDb, admin, 'Projeto de Teste', { phase })
     projs.push(project)
 
     const codebookVersion = await addCodebookVersion(ownerDb, project, admin, {
@@ -140,7 +147,7 @@ describe('app/projects/[id]/rounds/[roundId]/agreement — a concordância de um
       const round = await addRound(ownerDb, project, admin, codebookVersion, promptVersion, {
         roundNumber: index + 1,
         status: 'closed',
-        phase: PHASE_3,
+        phase,
       })
       rounds.push(round)
 
@@ -232,6 +239,33 @@ describe('app/projects/[id]/rounds/[roundId]/agreement — a concordância de um
     expect(excluded).toEqual(new Set())
     expect(observations).toEqual(await loadRoundObservations(rounds[0]))
     expect(observations).not.toEqual(await loadRoundObservations(rounds[1]))
+  })
+
+  it('a qualidade da rodada aparece na página dela, igual à da tela de rodadas', async () => {
+    const { project, admin, rounds } = await scene()
+
+    auth.userId = admin
+    const [fromRounds] = qualitySectionsOf(await renderRounds(project))
+    const [fromPage] = qualitySectionsOf(await render(project, rounds[1]))
+
+    expect(titleOf(fromPage)).toBe('Qualidade na rodada 2, fechada')
+    expect(renderToStaticMarkup(fromPage)).toBe(renderToStaticMarkup(fromRounds))
+
+    const [earlier] = qualitySectionsOf(await render(project, rounds[0]))
+    expect(titleOf(earlier)).toBe('Qualidade na rodada 1, fechada')
+    const [panel] = findAll(earlier, QualityPanel)
+    expect((panel.props as Parameters<typeof QualityPanel>[0]).pair).toEqual(
+      qualityPair(await loadRoundObservations(rounds[0]), new Set()),
+    )
+  })
+
+  it('uma rodada sem dado de qualidade não mostra a seção', async () => {
+    const { project, admin, rounds } = await scene(PHASE_2)
+
+    auth.userId = admin
+    const tree = await render(project, rounds[0])
+    agreementSectionOf(tree)
+    expect(qualitySectionsOf(tree)).toHaveLength(0)
   })
 
   it('o avaliador não abre a concordância da rodada', async () => {

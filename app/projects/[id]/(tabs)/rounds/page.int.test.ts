@@ -1015,7 +1015,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
       return [props.children, props.href]
     })
     expect(closed).toEqual([
-      ['Abrir concordância e confiabilidade', `/projects/${project}/rounds/${list.rounds[0].id}/agreement`],
+      ['Analisar rodada', `/projects/${project}/rounds/${list.rounds[0].id}/agreement`],
       ['Abrir revisão', `/projects/${project}/rounds/${list.rounds[0].id}`],
     ])
   })

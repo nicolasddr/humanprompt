@@ -4,12 +4,15 @@ import { transaction } from '@/lib/db'
 import { loadCodebookVersion } from '../../../../pipeline/codebook'
 import { PHASE_4 } from '../../../../pipeline/preconditions'
 import { listEvaluatorEffort, loadRoundObservations } from '../../agreement'
-import { loadRoundOutliers } from '../../outliers'
+import { excludedMemberIds, loadRoundOutliers } from '../../outliers'
 import { loadEvaluatorParticipation } from '../../participation'
 import { participationBefore } from '../../participation-labels'
 import { requireReviewAccess } from '../../review-access'
 import { loadRoundHeader, roundHeaderChips } from '../../round-header'
 import { roundAgreementSection } from '../../round-agreement-section'
+import { roundQualitySection } from '../../round-quality-section'
+import { hasQuality } from '../../quality'
+import { ReadingShortcuts, readingShortcuts } from '../../reading-shortcuts'
 import { BackLink } from '@/app/components/ui/shell'
 
 export default async function RoundAgreementPage({
@@ -48,6 +51,7 @@ export default async function RoundAgreementPage({
 
   const { header, observations, outliers, effort, participation } = view
   const { round } = header
+  const roundHref = `/projects/${id}/rounds/${roundId}`
 
   return (
     <>
@@ -57,6 +61,14 @@ export default async function RoundAgreementPage({
 
       {roundHeaderChips(header)}
 
+      <ReadingShortcuts
+        links={readingShortcuts({
+          agreement: true,
+          quality: hasQuality(round.phase),
+          review: roundHref,
+        })}
+      />
+
       {roundAgreementSection({
         round,
         observations,
@@ -65,10 +77,18 @@ export default async function RoundAgreementPage({
         definitions: view.definitions,
         criteria: view.criteria,
         ...(query.criterio ? { criterion: query.criterio } : {}),
-        href: `/projects/${id}/rounds/${roundId}/agreement`,
+        href: `${roundHref}/agreement`,
         ...(participation
           ? { participation: participationBefore(participation, round.roundNumber) }
           : {}),
+      })}
+
+      {roundQualitySection({
+        round,
+        observations,
+        excluded: excludedMemberIds(outliers),
+        definitions: view.definitions,
+        criteria: view.criteria,
       })}
     </>
   )

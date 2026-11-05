@@ -79,7 +79,7 @@ export function RoundList({
                           variant="secondary"
                           size="sm"
                         >
-                          Abrir concordância e confiabilidade
+                          Analisar rodada
                         </ButtonLink>
                         <ButtonLink
                           href={`/projects/${projectId}/rounds/${round.id}`}

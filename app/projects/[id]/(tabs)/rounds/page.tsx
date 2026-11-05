@@ -20,7 +20,6 @@ import { loadProjectOutliers, loadRoundOutliers } from './outliers'
 import { loadEvaluatorParticipation } from './participation'
 import { participationBefore } from './participation-labels'
 import { hasQuality, qualityPair, type QualityPair } from './quality'
-import { QUALITY_HINT, QUALITY_POINTS } from './quality-labels'
 import {
   evaluatorsNotFinished,
   isActiveEvaluator,
@@ -36,22 +35,10 @@ import { EvaluatorRounds } from './evaluator-rounds'
 import { listReviewableRounds } from './review'
 import { requireReviewAccess } from './review-access'
 import { roundAgreementSection } from './round-agreement-section'
-import {
-  criterionAgreements,
-  matrixColumns,
-  roundAgreements,
-  weakestCriterion,
-} from './agreement-matrix'
-import { byDefinitionSummary, isConcentrated } from './agreement-labels'
-import { ByDefinition } from './by-definition'
-import { QualityPanel } from './quality-panel'
-import { QualityMatrixNotes, QualityMatrixTable } from './quality-matrix-table'
-import { CriterionQualityTable } from './criterion-quality-table'
-import {
-  QUALITY_SECTION_ID,
-  hasReadingGuidance,
-  readingGuidance,
-} from './reading-guidance'
+import { roundQualitySection } from './round-quality-section'
+import { criterionAgreements, roundAgreements, weakestCriterion } from './agreement-matrix'
+import { isConcentrated } from './agreement-labels'
+import { hasReadingGuidance, readingGuidance } from './reading-guidance'
 import { ReadingGuidanceNote } from './reading-guidance-note'
 import { ROUNDS_SECTION_ID, ReadingShortcuts, readingShortcuts } from './reading-shortcuts'
 import { referenceComparison } from './reference-comparison'
@@ -196,19 +183,6 @@ export default async function ProjectRoundsPage({
   const focusWeakest = weakestCriterion(
     criterionAgreements(focusDefinitions, focusCriteria, focusObservations, focusExcluded),
   )
-  const focusByDefinition = byDefinitionSummary(
-    focusDefinitions.length,
-    matrixColumns(focusDefinitions, focusCriteria).length,
-  )
-  const focusQualityMatrix = focusRound ? (
-    <QualityMatrixTable
-      definitions={focusDefinitions}
-      criteria={focusCriteria}
-      observations={focusObservations}
-      excluded={focusExcluded}
-      codebookVersionNumber={focusRound.codebookVersionNumber}
-    />
-  ) : null
 
   const openSummary = openRound
     ? rounds.find((round) => round.id === openRound.id)
@@ -368,45 +342,15 @@ export default async function ProjectRoundsPage({
           })
         : null}
 
-      {focusRound && focusQuality ? (
-        <Section
-          id={QUALITY_SECTION_ID}
-          className="scroll-mt-6"
-          title={
-            focusRound.closedAt
-              ? `Qualidade na rodada ${focusRound.roundNumber}, fechada`
-              : `Qualidade na rodada ${focusRound.roundNumber}`
-          }
-          hint={QUALITY_HINT}
-          more={{ points: QUALITY_POINTS }}
-        >
-          <div className="flex flex-col gap-4">
-            <QualityPanel pair={focusQuality} />
-
-            {focusDefinitions.length > 0 && focusCriteria.length > 0 ? (
-              <>
-                <CriterionQualityTable
-                  definitions={focusDefinitions}
-                  criteria={focusCriteria}
-                  observations={focusObservations}
-                  excluded={focusExcluded}
-                />
-
-                <ByDefinition summary={focusByDefinition}>
-                  {focusQualityMatrix}
-                </ByDefinition>
-
-                <QualityMatrixNotes
-                  criteria={focusCriteria}
-                  codebookVersionNumber={focusRound.codebookVersionNumber}
-                />
-              </>
-            ) : (
-              focusQualityMatrix
-            )}
-          </div>
-        </Section>
-      ) : null}
+      {focusRound
+        ? roundQualitySection({
+            round: focusRound,
+            observations: focusObservations,
+            excluded: focusExcluded,
+            definitions: focusDefinitions,
+            criteria: focusCriteria,
+          })
+        : null}
 
       {openRound ? roundList : null}
     </>
