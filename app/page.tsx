@@ -14,7 +14,6 @@ export default async function Home() {
       <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-line bg-surface px-6 py-3">
         <Link className="flex items-center gap-2 text-[15px] font-bold text-brand" href="/">
           HumanPrompt
-          <span className="text-xs font-normal text-muted">protótipo</span>
         </Link>
         <GoogleSignInButton />
       </header>
@@ -25,7 +24,7 @@ export default async function Home() {
             Crie e valide prompts de forma sistemática
           </h1>
           <p className="mx-auto mb-7 max-w-[520px] text-base leading-[1.6] text-muted">
-            Este protótipo implementa o processo proposto por Shah (2025) em{' '}
+            Esta ferramenta implementa o processo proposto por Shah (2025) em{' '}
             <em>From Prompt Engineering to Prompt Science</em>, que visa tornar a
             engenharia de prompt mais verificável, replicável e livre de
             subjetividade individual.
