@@ -1,7 +1,7 @@
 import 'server-only'
 import { LlmError, classifyResponseFailure, classifyThrownFailure } from './failure'
 
-export const DEFAULT_LLM_MODEL = 'gpt-5.6-luna'
+export const DEFAULT_LLM_MODEL = 'gpt-5.5'
 
 export const DEFAULT_LLM_TIMEOUT_MS = 60_000
 
