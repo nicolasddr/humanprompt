@@ -141,6 +141,13 @@
       "when": 1792422506051,
       "tag": "0019_quick_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1794178829726,
+      "tag": "0020_revoke_data_api",
+      "breakpoints": true
     }
   ]
 }
