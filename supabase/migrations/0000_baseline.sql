@@ -99,10 +99,6 @@ CREATE TABLE "super_admins" (
 	"granted_by" uuid
 );
 --> statement-breakpoint
--- NOTA: o `drizzle-kit generate` emite aqui um `CREATE TABLE "auth"."users"` para o stub
--- externo de lib/db/schema.ts (que existe só para tipar a FK profiles.id -> auth.users.id).
--- Removido à mão: a tabela auth.users é gerida pelo Supabase Auth e já existe quando esta
--- migration roda. O FK profiles_id_fkey abaixo referencia essa tabela real.
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "onboarding_questions" ADD CONSTRAINT "onboarding_questions_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "onboarding_responses" ADD CONSTRAINT "onboarding_responses_project_member_id_fkey" FOREIGN KEY ("project_member_id") REFERENCES "public"."project_members"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

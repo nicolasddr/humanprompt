@@ -1,11 +1,6 @@
 import { pgTable, index, foreignKey, check, uuid, text, timestamp, unique, boolean, jsonb, uniqueIndex, integer } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
-// FONTE DA VERDADE do schema (issue #22, Fase 4 — o flip). Depois de remover RLS/policies/
-// triggers/RPCs, o Drizzle passou a ser DONO do schema: este arquivo é gerado/mantido à mão
-// e `drizzle-kit generate` produz o baseline em supabase/migrations. Não há mais introspecção
-// nem policies aqui — a autorização vive na app-layer (lib/authz, checagens nas actions).
-
 export const projects = pgTable("projects", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	name: text().notNull(),
@@ -13,9 +8,6 @@ export const projects = pgTable("projects", {
 	status: text().default('active').notNull(),
 	createdBy: uuid("created_by").notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	// updated_at gerido pela app via $onUpdate (o trigger set_updated_at saiu no flip da Fase 4).
-	// Nota: o $onUpdate também popula a coluna no INSERT (sem .default), então um projeto novo
-	// nasce com updated_at = now(). Inofensivo: nada no app lê projects.updated_at.
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).$onUpdate(() => sql`now()`),
 	taskType: text("task_type"),
 	phase: integer().default(1).notNull(),
@@ -30,8 +22,6 @@ export const projects = pgTable("projects", {
 	check("projects_status_check", sql`status = ANY (ARRAY['active'::text, 'completed'::text, 'archived'::text])`),
 	check("projects_task_type_check", sql`task_type = ANY (ARRAY['classification'::text, 'quality_evaluation'::text, 'generation'::text, 'mixed'::text, 'other'::text])`),
 	check("projects_phase_check", sql`phase >= 1 AND phase <= 4`),
-	// Limites de tamanho (defesa em profundidade — ver lib/limits.ts, mesmos valores).
-	// Números literais porque o drizzle-kit precisa deles congelados na migration gerada.
 	check("projects_name_len", sql`char_length(name) <= 200`),
 	check("projects_description_len", sql`description IS NULL OR char_length(description) <= 2000`),
 ]);
@@ -42,12 +32,9 @@ export const profiles = pgTable("profiles", {
 	email: text().notNull(),
 	canCreateProjects: boolean("can_create_projects").default(false).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	// updated_at gerido pela app via $onUpdate (o grant de coluna e o trigger set_updated_at
-	// saíram no flip da Fase 4; antes o $onUpdate esbarraria no grant que só liberava name).
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).$onUpdate(() => sql`now()`),
 }, (table) => [
 	unique("profiles_email_key").on(table.email),
-	// Limite de tamanho (defesa em profundidade — ver lib/limits.ts, mesmo valor).
 	check("profiles_name_len", sql`char_length(name) <= 200`),
 ]);
 
@@ -119,8 +106,6 @@ export const projectMembers = pgTable("project_members", {
 	onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true, mode: 'string' }),
 	consentAcceptedAt: timestamp("consent_accepted_at", { withTimezone: true, mode: 'string' }),
 	consentTextSnapshot: text("consent_text_snapshot"),
-	// updated_at gerido pela app via $onUpdate (o grant de coluna e o trigger set_updated_at
-	// saíram no flip da Fase 4; antes o $onUpdate esbarraria no grant limitado a status/consent).
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).$onUpdate(() => sql`now()`),
 }, (table) => [
 	index("pm_project_status").using("btree", table.projectId.asc().nullsLast(), table.status.asc().nullsLast()),
@@ -145,8 +130,6 @@ export const projectMembers = pgTable("project_members", {
 export const projectInvitations = pgTable("project_invitations", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	projectId: uuid("project_id").notNull(),
-	// NULLABLE desde 0009 (ADR 0006): convite por e-mail fica pendente sem perfil;
-	// invitee_id é preenchido na resolução (1º login). Ver inviteeEmail.
 	inviteeId: uuid("invitee_id"),
 	inviteeEmail: text("invitee_email"),
 	invitedBy: uuid("invited_by"),
@@ -175,7 +158,6 @@ export const projectInvitations = pgTable("project_invitations", {
 		}).onDelete("set null"),
 	check("project_invitations_status_check", sql`status = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text, 'cancelled'::text])`),
 	check("inv_target_present", sql`(invitee_id IS NOT NULL) OR (invitee_email IS NOT NULL)`),
-	// Limite de tamanho (defesa em profundidade — ver lib/limits.ts, mesmo valor).
 	check("inv_invitee_email_len", sql`invitee_email IS NULL OR char_length(invitee_email) <= 254`),
 ]);
 
@@ -198,7 +180,6 @@ export const onboardingResponses = pgTable("onboarding_responses", {
 			name: "onboarding_responses_question_id_fkey"
 		}).onDelete("cascade"),
 	unique("or_unique_member_question").on(table.projectMemberId, table.questionId),
-	// Limite de tamanho (defesa em profundidade — ver lib/limits.ts, mesmo valor).
 	check("or_answer_len", sql`char_length(answer) <= 5000`),
 ]);
 
@@ -218,9 +199,6 @@ export const onboardingQuestions = pgTable("onboarding_questions", {
 			name: "onboarding_questions_project_id_fkey"
 		}).onDelete("cascade"),
 	check("onboarding_questions_question_type_check", sql`question_type = ANY (ARRAY['open'::text, 'multiple_choice'::text])`),
-	// Limites de tamanho (defesa em profundidade — ver lib/limits.ts, mesmos valores).
-	// `options` é jsonb (lista de strings); sem checar item a item no banco (isso já é
-	// validado na action), só um teto pro blob inteiro contra abuso bruto de tamanho.
 	check("oq_question_text_len", sql`char_length(question_text) <= 500`),
 	check("oq_options_size", sql`options IS NULL OR pg_column_size(options) <= 8000`),
 ]);
