@@ -73,7 +73,6 @@ import {
   addPendingInvitation,
   addOnboardingQuestion,
   addOnboardingResponse,
-  grantCreatePermission,
   addCodebookVersion,
   addPromptVersion,
   addInputItem,
@@ -113,14 +112,10 @@ describe('app/projects/actions — autorização explícita', () => {
     await cleanup(projs, users)
   })
 
-  it('createProject: sem can_create_projects → erro; com → cria e vira admin ativo', async () => {
+  it('createProject: qualquer usuário cria e vira admin ativo', async () => {
     const admin = await newUser('Admin')
 
     auth.userId = admin
-    const denied = await createProject(null, fd({ name: 'Projeto X' }))
-    expect(denied).toEqual({ error: expect.stringContaining('permissão') })
-
-    await grantCreatePermission(ownerDb, admin)
     let redirected = ''
     try {
       await createProject(null, fd({ name: 'Projeto X', task_type: 'classification' }))
@@ -268,7 +263,7 @@ describe('app/projects/actions — autorização explícita', () => {
     expect(created.status).toBe('pending')
   })
 
-  it('inviteEvaluator: administrador do projeto resolve o convidado mesmo sem can_create_projects', async () => {
+  it('inviteEvaluator: administrador do projeto resolve o convidado', async () => {
     const admin = await newUser('Admin')
     const invitee = await newUser('Convidado')
     const project = await newProject(admin)

@@ -1,5 +1,5 @@
 
-import { and, asc, desc, eq, ne, or, sql } from 'drizzle-orm'
+import { and, desc, eq, ne, or, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import {
   ownerDb,
@@ -8,8 +8,6 @@ import {
   projects,
   projectMembers,
   projectInvitations,
-  platformPermissionRequests,
-  superAdmins,
   evaluations,
 } from '@/lib/db'
 
@@ -19,13 +17,6 @@ async function any(rows: Promise<unknown[]>): Promise<boolean> {
 }
 
 const ONE = sql<number>`1`
-
-/** É super-admin da plataforma? */
-export function isSuperAdmin(userId: string, db: DbExecutor = ownerDb): Promise<boolean> {
-  return any(
-    db.select({ one: ONE }).from(superAdmins).where(eq(superAdmins.userId, userId)).limit(1),
-  )
-}
 
 /** Membro ATIVO do projeto (qualquer papel)? */
 export function isMemberOf(
@@ -219,41 +210,6 @@ export function canAnswerOnboarding(
   )
 }
 
-/** Tem permissão de plataforma para criar projetos? (flag `profiles.can_create_projects`) */
-export function canCreateProjects(userId: string, db: DbExecutor = ownerDb): Promise<boolean> {
-  return any(
-    db
-      .select({ one: ONE })
-      .from(profiles)
-      .where(and(eq(profiles.id, userId), eq(profiles.canCreateProjects, true)))
-      .limit(1),
-  )
-}
-
-/**
- * Tem uma solicitação de permissão de criação de projetos ainda PENDENTE? (fatia 08)
- * Usado pela página /projects/new para mostrar "aguardando aprovação" em vez de reoferecer
- * o botão de solicitar. O índice único parcial `ppr_one_pending_per_user` garante que só
- * exista uma pendente por usuário.
- */
-export function hasPendingPermissionRequest(
-  userId: string,
-  db: DbExecutor = ownerDb,
-): Promise<boolean> {
-  return any(
-    db
-      .select({ one: ONE })
-      .from(platformPermissionRequests)
-      .where(
-        and(
-          eq(platformPermissionRequests.userId, userId),
-          eq(platformPermissionRequests.status, 'pending'),
-        ),
-      )
-      .limit(1),
-  )
-}
-
 export type ProjectMemberRow = {
   memberId: string
   userId: string
@@ -288,43 +244,12 @@ export function listProjectMembers(
     .where(and(eq(projectMembers.projectId, projectId), scope))
 }
 
-export type PendingPermissionRequest = {
-  requestId: string
-  userId: string
-  userName: string
-  userEmail: string
-  createdAt: string
-}
-
-/**
- * Lista as solicitações de permissão de criação de projetos ainda PENDENTES, já com o nome
- * e o e-mail de quem pediu, para a página de revisão do super-admin (fatia 08 / HU-033).
- * Só o super-admin chama isto (a página checa `isSuperAdmin` antes). Ordena da mais antiga
- * para a mais recente (fila: quem esperou mais aparece primeiro).
- */
-export function listPendingPermissionRequests(
-  db: DbExecutor = ownerDb,
-): Promise<PendingPermissionRequest[]> {
-  return db
-    .select({
-      requestId: platformPermissionRequests.id,
-      userId: platformPermissionRequests.userId,
-      userName: profiles.name,
-      userEmail: profiles.email,
-      createdAt: platformPermissionRequests.createdAt,
-    })
-    .from(platformPermissionRequests)
-    .innerJoin(profiles, eq(profiles.id, platformPermissionRequests.userId))
-    .where(eq(platformPermissionRequests.status, 'pending'))
-    .orderBy(asc(platformPermissionRequests.createdAt))
-}
-
 /**
  * Resolve o convidado por e-mail para o fluxo de convite (HU-018). Devolve SÓ
  * `{ id, name }` (nunca o e-mail nem outro dado), ou `null` se não achar.
  *
- * ⚠️ GUARDA ANTI-ENUMERAÇÃO: só resolve o perfil se QUEM convida (`callerId`) tem
- * `can_create_projects` ou é administrador ativo de `projectId`. Sem isso devolve `null` de forma INDISTINGUÍVEL de
+ * ⚠️ GUARDA ANTI-ENUMERAÇÃO: só resolve o perfil se QUEM convida (`callerId`) é
+ * administrador ativo de `projectId`. Sem isso devolve `null` de forma INDISTINGUÍVEL de
  * "e-mail não cadastrado" — quem não pode convidar não consegue sondar se um e-mail
  * existe. Comparação de e-mail case-insensitive (`lower(email)`).
  */
@@ -334,9 +259,7 @@ export async function findInviteeByEmail(
   email: string,
   db: DbExecutor = ownerDb,
 ): Promise<{ id: string; name: string } | null> {
-  const mayResolve =
-    (await canCreateProjects(callerId, db)) || (await isProjectAdmin(callerId, projectId, db))
-  if (!mayResolve) return null
+  if (!(await isProjectAdmin(callerId, projectId, db))) return null
   const [row] = await db
     .select({ id: profiles.id, name: profiles.name })
     .from(profiles)

@@ -47,9 +47,6 @@ export default async function ProfilePage({
   if (project && from) {
     back = { href: from, label: `Voltar ao projeto ${project.name}` }
     trail = [DASHBOARD, { label: project.name, href: `/projects/${project.id}` }, CURRENT]
-  } else if (from?.startsWith('/admin/permissions')) {
-    back = { href: from, label: 'Voltar às solicitações de permissão' }
-    trail = [DASHBOARD, { label: 'Solicitações de permissão', href: '/admin/permissions' }, CURRENT]
   } else if (from && !from.startsWith('/dashboard')) {
     back = { href: from, label: 'Voltar à página anterior' }
     trail = [DASHBOARD, CURRENT]

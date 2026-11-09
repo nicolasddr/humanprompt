@@ -13,7 +13,6 @@ import {
   inRollbackTx,
   createUser,
   createProject,
-  grantCreatePermission,
 } from '@/test/helpers'
 
 // Insere um convite PENDENTE por e-mail (invitee_id NULL, resolvido no 1º login).
@@ -67,7 +66,6 @@ describe('provisionUserOnFirstLogin', () => {
   it('vincula convite por e-mail pendente e emite UMA notificação', async () => {
     await inRollbackTx(async (tx) => {
       const inviter = await createUser(tx, 'Convidante')
-      await grantCreatePermission(tx, inviter)
       const project = await createProject(tx, inviter, 'Projeto Alfa')
       const email = 'convidada@exemplo.test'
       const newUser = await createUser(tx, 'Convidada', email)

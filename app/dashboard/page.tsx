@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { eq } from 'drizzle-orm'
 import { getClaims } from '@/lib/supabase/server'
 import { transaction, projectMembers, projects as projectsTable } from '@/lib/db'
-import { isSuperAdmin, listMyPendingInvitations, type PendingInvitation } from '@/lib/authz'
+import { listMyPendingInvitations, type PendingInvitation } from '@/lib/authz'
 import { declineInvitation } from '@/app/invitations/actions'
 import { acceptInvitation } from '@/app/onboarding/actions'
 import { CollapsedProcessOverview, ProcessOverview } from '@/app/components/process-overview'
@@ -60,8 +60,6 @@ export default async function Dashboard({
 
   const pendingInvitationRows = await listMyPendingInvitations(userId)
 
-  const superAdmin = await isSuperAdmin(userId)
-
   const byProject = new Map<string, ListedProject>()
   let hasArchived = false
   for (const row of accessRows(membershipRows)) {
@@ -103,11 +101,6 @@ export default async function Dashboard({
         <div className="mb-4 flex items-center justify-between gap-4">
           <h1 className="m-0 text-lg font-bold text-ink">Meus projetos</h1>
           <div className="flex items-center gap-3">
-            {superAdmin ? (
-              <ButtonLink href="/admin/permissions" variant="quiet">
-                Solicitações de permissão
-              </ButtonLink>
-            ) : null}
             {hasArchived ? (
               <ButtonLink
                 href={showArchived ? '/dashboard' : '/dashboard?arquivados=1'}

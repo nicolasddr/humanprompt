@@ -15,7 +15,6 @@ import {
   onboardingQuestions,
   onboardingResponses,
   notifications,
-  platformPermissionRequests,
   superAdmins,
   codebookVersions,
   codebookDefinitions,
@@ -189,29 +188,6 @@ export async function addPendingInvitation(
       status: 'pending',
     })
     .returning({ id: projectInvitations.id })
-  return row.id
-}
-
-/** Liga a flag de plataforma `can_create_projects` no profile. */
-export async function grantCreatePermission(tx: DbExecutor, userId: string): Promise<void> {
-  await tx.update(profiles).set({ canCreateProjects: true }).where(eq(profiles.id, userId))
-}
-
-/** Torna `userId` super-admin da plataforma. */
-export async function makeSuperAdmin(tx: DbExecutor, userId: string): Promise<void> {
-  await tx.insert(superAdmins).values({ userId })
-}
-
-/** Cria uma solicitação de permissão de criar projetos (status default 'pending'). */
-export async function addPermissionRequest(
-  tx: DbExecutor,
-  userId: string,
-  status: 'pending' | 'approved' | 'rejected' = 'pending',
-): Promise<string> {
-  const [row] = await tx
-    .insert(platformPermissionRequests)
-    .values({ userId, status })
-    .returning({ id: platformPermissionRequests.id })
   return row.id
 }
 

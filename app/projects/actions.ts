@@ -11,12 +11,10 @@ import {
   projects,
   projectInvitations,
   projectMembers,
-  platformPermissionRequests,
   notifications,
   type DbExecutor,
 } from '@/lib/db'
 import {
-  canCreateProjects,
   countSubmittedEvaluations,
   findInviteeByEmail,
   isProjectAdmin,
@@ -34,8 +32,6 @@ import { grantAdminRefusal, revokeAdminOutcome, revokeAdminRefusal } from './adm
 import { EMAIL_MAX, PROJECT_DESCRIPTION_MAX, PROJECT_NAME_MAX } from '@/lib/limits'
 
 export type CreateProjectState = { error: string } | null
-
-export type RequestPermissionState = { error: string } | { ok: string } | null
 
 export type InviteEvaluatorState = { error: string } | { ok: string } | null
 
@@ -66,13 +62,6 @@ export async function createProject(
     return { error: `A descrição pode ter no máximo ${PROJECT_DESCRIPTION_MAX} caracteres.` }
   }
 
-  if (!(await canCreateProjects(userId))) {
-    return {
-      error:
-        'Não foi possível criar o projeto. Verifique se você tem permissão para criar projetos.',
-    }
-  }
-
   const [created] = await transaction((tx) =>
     tx
       .insert(projects)
@@ -96,27 +85,6 @@ export async function createProject(
   redirect(`/projects/${created.id}`)
 }
 
-
-export async function requestCreatePermission(
-  _prev: RequestPermissionState,
-  _formData: FormData,
-): Promise<RequestPermissionState> {
-  const userId = await requireUserId()
-
-  if (await canCreateProjects(userId)) {
-    return { ok: 'Você já tem permissão para criar projetos.' }
-  }
-
-  await transaction((tx) =>
-    tx
-      .insert(platformPermissionRequests)
-      .values({ userId, status: 'pending' })
-      .onConflictDoNothing(),
-  )
-
-  revalidatePath('/projects/new')
-  return { ok: 'Solicitação enviada. Você será avisado quando for analisada.' }
-}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

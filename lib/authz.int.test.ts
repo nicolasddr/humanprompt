@@ -7,7 +7,6 @@
 import { describe, it, expect } from 'vitest'
 import { eq } from 'drizzle-orm'
 import {
-  isSuperAdmin,
   isMemberOf,
   isProjectMember,
   isProjectAdmin,
@@ -18,7 +17,6 @@ import {
   sharesProjectWith,
   canViewResponse,
   canAnswerOnboarding,
-  canCreateProjects,
   findInviteeByEmail,
   listMyPendingInvitations,
 } from '@/lib/authz'
@@ -37,7 +35,6 @@ import {
   addRound,
   addResponse,
   addEvaluation,
-  grantCreatePermission,
   memberId,
 } from '@/test/helpers'
 
@@ -139,25 +136,7 @@ describe('lib/authz — predicados de autorização', () => {
     })
   })
 
-  it('canCreateProjects: só quem tem a flag de plataforma ligada', async () => {
-    await inRollbackTx(async (tx) => {
-      const withPerm = await createUser(tx)
-      const withoutPerm = await createUser(tx)
-      await grantCreatePermission(tx, withPerm)
-
-      expect(await canCreateProjects(withPerm, tx)).toBe(true)
-      expect(await canCreateProjects(withoutPerm, tx)).toBe(false)
-    })
-  })
-
-  it('isSuperAdmin: falso para um usuário comum recém-criado', async () => {
-    await inRollbackTx(async (tx) => {
-      const user = await createUser(tx)
-      expect(await isSuperAdmin(user, tx)).toBe(false)
-    })
-  })
-
-  it('findInviteeByEmail: resolve {id,name}; anti-enumeração barra quem não pode criar projetos', async () => {
+  it('findInviteeByEmail: resolve {id,name}; anti-enumeração barra quem não é admin do projeto', async () => {
     await inRollbackTx(async (tx) => {
       const inviter = await createUser(tx, 'Convidante')
       const invitee = await createUser(tx, 'Convidado')
@@ -168,12 +147,9 @@ describe('lib/authz — predicados de autorização', () => {
         .from(profiles)
         .where(eq(profiles.id, invitee))
 
-      // GUARDA ANTI-ENUMERAÇÃO: sem can_create_projects, devolve null mesmo p/ e-mail
-      // que EXISTE — indistinguível de "não cadastrado". Quem não pode convidar não sonda.
       expect(await findInviteeByEmail(inviter, project, email, tx)).toBeNull()
 
-      // Com a permissão ligada, resolve só id+name (nada além disso vaza).
-      await grantCreatePermission(tx, inviter)
+      await addActiveAdmin(tx, project, inviter)
       expect(await findInviteeByEmail(inviter, project, email, tx)).toEqual({
         id: invitee,
         name: 'Convidado',
@@ -190,7 +166,7 @@ describe('lib/authz — predicados de autorização', () => {
     })
   })
 
-  it('findInviteeByEmail: administrador ativo do projeto resolve sem can_create_projects, só nesse projeto', async () => {
+  it('findInviteeByEmail: administrador ativo do projeto resolve só nesse projeto', async () => {
     await inRollbackTx(async (tx) => {
       const owner = await createUser(tx, 'Dono')
       const promoted = await createUser(tx, 'Promovido')

@@ -115,16 +115,6 @@ describe('app/profile — volta para onde o usuário estava', () => {
     expect(trail.map((t) => t.label)).toEqual(['Meus projetos', 'Meu perfil'])
   })
 
-  it('vindo das solicitações de permissão, volta para elas', async () => {
-    auth.userId = await newUser()
-    const { back, trail } = await render('/admin/permissions')
-    expect(back).toMatchObject({
-      href: '/admin/permissions',
-      children: 'Voltar às solicitações de permissão',
-    })
-    expect(trail[1]).toEqual({ label: 'Solicitações de permissão', href: '/admin/permissions' })
-  })
-
   it('ignora origem externa e cai em Meus projetos', async () => {
     auth.userId = await newUser()
     const { back } = await render('//exemplo.com/phishing')
