@@ -2448,7 +2448,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     const admin = await newUser('Admin')
     const evaluator = await newUser('Avaliador')
     const invited = await newUser('Convidado')
-    const project = await newProject(admin)
+    const project = await newProject(admin, PHASE_2)
     await addActiveEvaluator(ownerDb, project, evaluator)
     await addPendingMember(ownerDb, project, invited)
 
@@ -2456,5 +2456,20 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(hasProp(await tabsOf(project, admin), 'href', href)).toBe(true)
     expect(hasProp(await tabsOf(project, evaluator), 'href', href)).toBe(true)
     expect(hasProp(await tabsOf(project, invited), 'href', href)).toBe(false)
+  })
+
+  it('na Fase 1 a aba Rodadas não é link para ninguém, e o hover diz que libera na Fase 2', async () => {
+    const admin = await newUser('Admin')
+    const evaluator = await newUser('Avaliador')
+    const project = await newProject(admin, PHASE_1)
+    await addActiveEvaluator(ownerDb, project, evaluator)
+
+    const href = `/projects/${project}/rounds`
+    const hint = `Disponível a partir da Fase ${PHASE_2}`
+    for (const user of [admin, evaluator]) {
+      const tabs = await tabsOf(project, user)
+      expect(hasProp(tabs, 'href', href)).toBe(false)
+      expect(hasProp(tabs, 'hint', hint)).toBe(true)
+    }
   })
 })

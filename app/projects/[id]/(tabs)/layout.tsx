@@ -117,6 +117,7 @@ export default async function ProjectTabsLayout({
             isAdmin={isAdmin}
             isEvaluator={isEvaluator}
             isActiveMember={isActiveMember}
+            phase={project.phase}
           />
         ) : null}
       </header>

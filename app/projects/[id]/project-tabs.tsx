@@ -12,8 +12,10 @@ import {
   UsersIcon,
   SlidersIcon,
 } from '@/app/components/ui/icons'
+import { PHASE_1, PHASE_2 } from './pipeline/preconditions'
 
 const roundsLocked = 'Disponível para avaliadores ativos que concluíram o onboarding'
+const roundsLockedByPhase = `Disponível a partir da Fase ${PHASE_2}`
 
 export type ProjectTab =
   | 'overview'
@@ -54,11 +56,13 @@ export function ProjectTabs({
   isAdmin,
   isEvaluator,
   isActiveMember,
+  phase,
 }: {
   projectId: string
   isAdmin: boolean
   isEvaluator: boolean
   isActiveMember: boolean
+  phase: number
 }) {
   const active = activeTab(usePathname() ?? '', projectId)
 
@@ -98,7 +102,11 @@ export function ProjectTabs({
         </>
       ) : null}
 
-      {isAdmin || isEvaluator ? (
+      {phase === PHASE_1 ? (
+        <Tab icon={<RepeatIcon />} hint={roundsLockedByPhase}>
+          Rodadas
+        </Tab>
+      ) : isAdmin || isEvaluator ? (
         <Tab
           icon={<RepeatIcon />}
           href={`/projects/${projectId}/rounds`}

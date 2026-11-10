@@ -1191,20 +1191,19 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(roundBlockerMessage(props.blockers[0])).toContain('“Transacional”')
   })
 
-  it('na Fase 1 a tela explica que a rodada só começa na Fase 2', async () => {
+  it('na Fase 1 a área de rodadas fica bloqueada, mesmo para o Administrador', async () => {
     const admin = await newUser('Admin')
     const { project } = await readyProject(admin, PHASE_1)
 
     auth.userId = admin
-    const props = newRoundOf(await render(project))
-    const phaseBlocker = props.blockers.find((blocker) => blocker.key === 'phase')
-    expect(phaseBlocker).toBeTruthy()
-    expect(roundBlockerMessage(phaseBlocker!)).toContain(`Fase ${PHASE_2}`)
+    await expect(render(project)).rejects.toThrow('NEXT_NOTFOUND')
   })
 
   it('na Nova rodada, cada ⓘ fica em até 25 palavras, e a seção não tem "Saiba mais"', async () => {
     const admin = await newUser('Admin')
-    const blocked = await readyProject(admin, PHASE_1)
+    const blocked = await readyProject(admin, PHASE_2, {
+      definitions: [{ title: 'Transacional', type: 'category' }],
+    })
     const ready = await readyProject(admin, PHASE_2)
 
     auth.userId = admin

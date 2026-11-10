@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { and, eq } from 'drizzle-orm'
 import { ownerDb, type DbExecutor, projectMembers } from '@/lib/db'
 import { loadPipelineAccess, type PipelineProject } from '../../pipeline/access'
+import { PHASE_1 } from '../../pipeline/preconditions'
 import { listEvaluatedRoundIds, loadReviewRound, type ReviewRound } from './review'
 
 export type ReviewAccess = {
@@ -62,6 +63,8 @@ export async function requireReviewAccess(
     if (access.onboardingPending) redirect(`/projects/${projectId}/onboarding`)
     notFound()
   }
+
+  if (access.project.phase === PHASE_1) notFound()
 
   return {
     project: access.project,
