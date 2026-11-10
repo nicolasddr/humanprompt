@@ -35,7 +35,7 @@ export const PIPELINE_REQUIREMENTS: readonly PipelineRequirement[] = [
     title: 'Definição',
     action: 'Cadastrar definições no codebook',
     pending:
-      'Cadastre ao menos uma definição. As definições vão à LLM junto com o prompt e dão a ela o contexto mínimo para realizar a tarefa.',
+      'Cadastre ao menos uma definição. Na Fase 2, só os títulos das definições vão à LLM junto com o prompt, como contexto mínimo para realizar a tarefa; descrições e critérios passam a ir a partir da Fase 3.',
     route: 'codebook',
   },
   {
