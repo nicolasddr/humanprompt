@@ -40,8 +40,6 @@ O modelo está em `.env.example`. O arquivo de verdade é o `.env.local`, que n�
 | `OPENAI_TIMEOUT_MS` | Tempo máximo de espera da LLM. Vazio usa 60000. |
 | `LLM_PROJECT_RESPONSES_MAX` | Teto de respostas de LLM por projeto. Vazio usa 200. |
 
-O comentário no `.env.example` sobre a `DATABASE_URL` ainda fala em RLS. Ele é anterior à remoção das políticas e está desatualizado.
-
 ### Dois arranjos de desenvolvimento
 
 **Auth hospedado e banco local.** É o arranjo do `.env.local`. O login usa o Google de verdade, pelo projeto Supabase hospedado, e os dados ficam no PostgreSQL local. Funciona porque o perfil não tem chave estrangeira para `auth.users`: o id vem do Auth hospedado e o perfil é criado no banco local no primeiro login.

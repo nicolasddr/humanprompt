@@ -61,5 +61,4 @@ Não há login por e-mail e senha em produção. Quem não tem conta Google não
 ## Restos de versões anteriores
 
 - As tabelas `super_admins` e `platform_permission_requests` e o tipo de notificação `permission_decision` vêm do fluxo de permissão para criar projetos, removido em novembro de 2026. Podem sair numa migração futura.
-- O comentário sobre a `DATABASE_URL` no `.env.example` ainda menciona RLS, que não existe mais.
 - Alguns arquivos (`lib/db/index.ts`, `test/helpers.ts`, `supabase/seed.sql`, `app/onboarding/actions.ts`) têm comentários que citam a migração para o Drizzle, a "Fase 4 da issue #22" ou o "flip". Esses termos se referem ao plano de refatoração que tirou as regras do banco e não têm relação com as fases do processo de Shah.
