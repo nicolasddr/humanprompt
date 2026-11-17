@@ -12,7 +12,8 @@ import { loadRoundHeader, roundHeaderChips } from '../../round-header'
 import { roundAgreementSection } from '../../round-agreement-section'
 import { roundQualitySection } from '../../round-quality-section'
 import { hasQuality } from '../../quality'
-import { ReadingShortcuts, readingShortcuts } from '../../reading-shortcuts'
+import { ReadingShortcuts, readingShortcuts, withCriterion } from '../../reading-shortcuts'
+import { parseQualityView, withQualityView } from '../../quality-view'
 import { BackLink } from '@/app/components/ui/shell'
 
 export default async function RoundAgreementPage({
@@ -20,7 +21,7 @@ export default async function RoundAgreementPage({
   searchParams,
 }: {
   params: Promise<{ id: string; roundId: string }>
-  searchParams: Promise<{ criterio?: string }>
+  searchParams: Promise<{ criterio?: string; qualidade?: string | string[] }>
 }) {
   const { id, roundId } = await params
   const query = await searchParams
@@ -52,6 +53,8 @@ export default async function RoundAgreementPage({
   const { header, observations, outliers, effort, participation } = view
   const { round } = header
   const roundHref = `/projects/${id}/rounds/${roundId}`
+  const agreementHref = `${roundHref}/agreement`
+  const qualityView = parseQualityView(query.qualidade)
 
   return (
     <>
@@ -77,7 +80,7 @@ export default async function RoundAgreementPage({
         definitions: view.definitions,
         criteria: view.criteria,
         ...(query.criterio ? { criterion: query.criterio } : {}),
-        href: `${roundHref}/agreement`,
+        href: withQualityView(agreementHref, qualityView),
         ...(participation
           ? { participation: participationBefore(participation, round.roundNumber) }
           : {}),
@@ -89,6 +92,8 @@ export default async function RoundAgreementPage({
         excluded: excludedMemberIds(outliers),
         definitions: view.definitions,
         criteria: view.criteria,
+        view: qualityView,
+        href: withCriterion(agreementHref, query.criterio ?? null),
       })}
     </>
   )

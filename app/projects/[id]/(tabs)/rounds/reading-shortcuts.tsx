@@ -7,9 +7,17 @@ export const ROUNDS_SECTION_ID = 'rodadas-do-projeto'
 
 export const CRITERION_PARAM = 'criterio'
 
+export function withCriterion(href: string, criterion: string | null): string {
+  const [path, search = ''] = href.split('?')
+  const query = new URLSearchParams(search)
+  if (criterion) query.set(CRITERION_PARAM, criterion)
+  else query.delete(CRITERION_PARAM)
+  const text = query.toString()
+  return text ? `${path}?${text}` : path
+}
+
 export function agreementCriterionHref(href: string, criterion: string | null): string {
-  const query = criterion ? `?${new URLSearchParams({ [CRITERION_PARAM]: criterion })}` : ''
-  return `${href}${query}#${AGREEMENT_SECTION_ID}`
+  return `${withCriterion(href, criterion)}#${AGREEMENT_SECTION_ID}`
 }
 
 export type ReadingShortcut = { href: string; label: string }

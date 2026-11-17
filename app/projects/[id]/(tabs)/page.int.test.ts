@@ -241,10 +241,10 @@ function form(fields: Record<string, string>): FormData {
   return data
 }
 
-function renderRounds(id: string) {
+function renderRounds(id: string, query: { qualidade?: string } = {}) {
   return ProjectRoundsPage({
     params: Promise.resolve({ id }),
-    searchParams: Promise.resolve({}),
+    searchParams: Promise.resolve(query),
   })
 }
 
@@ -374,10 +374,10 @@ function seriesTextOf(tree: unknown): string {
   return label![1]
 }
 
-function roundsQualityOf(tree: unknown): QualityProps['pair'] {
+function roundsQualityOf(tree: unknown): Parameters<typeof QualityLine>[0]['quality'] {
   const element = findElement(tree, QualityLine)
   expect(element).toBeTruthy()
-  return (element!.props as Parameters<typeof QualityLine>[0]).pair
+  return (element!.props as Parameters<typeof QualityLine>[0]).quality
 }
 
 function qualityOf(tree: unknown): QualityProps {
@@ -1321,7 +1321,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     })
     const agreement = agreementOf(last)
     if (!agreement.calculable) throw new Error('a rodada deveria ter coeficiente')
-    expect(last!.quality).toEqual(roundsQualityOf(await renderRounds(project)))
+    expect(last!.quality!.all).toEqual(roundsQualityOf(await renderRounds(project)))
 
     const text = phase3TextOf(tree)
     expect(text).toContain('Rodada de referência: rodada 2')
@@ -1697,7 +1697,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
       withoutOutliers: null,
       excluded: 0,
     })
-    expect(pair).toEqual(roundsQualityOf(await renderRounds(project)))
+    expect(pair.all).toEqual(roundsQualityOf(await renderRounds(project)))
 
     const text = qualityTextOf(tree)
     expect(text).toContain('Alto 62,5% (5)')
@@ -1940,7 +1940,10 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     const focusPoint = qualitySeriesOf(tree).points.at(-1)!
 
     expect(focusPoint.roundNumber).toBe(4)
-    expect(focusPoint.pair).toEqual(roundsQualityOf(await renderRounds(project)))
+    expect(focusPoint.pair.all).toEqual(roundsQualityOf(await renderRounds(project)))
+    expect(focusPoint.pair.withoutOutliers).toEqual(
+      roundsQualityOf(await renderRounds(project, { qualidade: 'sem-outliers' })),
+    )
     expect(focusPoint.pair).toEqual(qualityOf(tree).pair)
   })
 

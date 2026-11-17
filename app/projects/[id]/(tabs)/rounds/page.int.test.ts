@@ -55,12 +55,15 @@ import { QualityPanel, QualitySummary } from '@/app/projects/[id]/(tabs)/rounds/
 import {
   QUALITY_ALL_DEFINITIONS,
   QUALITY_HEAT_LEGEND,
-  QUALITY_HEAT_OUTLIERS_NOTE,
   QUALITY_NOT_APPLICABLE,
   QUALITY_PER_RESPONSE_LEAD,
   QUALITY_UNRATED,
   QUALITY_UNRATED_WITHOUT_OUTLIERS,
+  QUALITY_VIEW_ALL,
+  QUALITY_VIEW_RESULT,
+  qualityViewWithoutOutliers,
 } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
+import { QualityViewSelector } from '@/app/projects/[id]/(tabs)/rounds/quality-view-selector'
 import {
   ALL_CRITERIA_TAB,
   AGREEMENT_ALL_LABEL,
@@ -276,7 +279,13 @@ const GUIDANCE_TEXTS = [
 
 function render(
   id: string,
-  query: { gerar?: string; criterio?: string; ordem?: string; pagina?: string } = {},
+  query: {
+    gerar?: string
+    criterio?: string
+    ordem?: string
+    pagina?: string
+    qualidade?: string
+  } = {},
 ) {
   return ProjectRoundsPage({
     params: Promise.resolve({ id }),
@@ -1236,7 +1245,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(list.rounds.map((round) => [round.roundNumber, round.phase])).toEqual([
       [1, PHASE_3],
     ])
-    expect(qualityLineOf(tree).pair.all).toMatchObject({ rated: true, total: 8 })
+    expect(qualityLineOf(tree).quality).toMatchObject({ rated: true, total: 8 })
   })
 
   it('na Fase 4, com o codebook mudado depois da rodada de referência, a nova rodada fica recusada', async () => {
@@ -2044,9 +2053,8 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    const pair = qualityLineOf(tree).pair
-    expect(pair.withoutOutliers).toBeNull()
-    expect(pair.all).toEqual({
+    expect(findElement(tree, QualityViewSelector)).toBeNull()
+    expect(qualityLineOf(tree).quality).toEqual({
       rated: true,
       total: 8,
       levels: [
@@ -2116,11 +2124,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    expect(qualityLineOf(tree).pair).toEqual({
-      all: { rated: false, total: 0 },
-      withoutOutliers: null,
-      excluded: 0,
-    })
+    expect(qualityLineOf(tree).quality).toEqual({ rated: false, total: 0 })
     const text = qualityTextOf(tree)
     expect(text).toContain(QUALITY_UNRATED)
     expect(text).not.toContain('0%')
@@ -2129,7 +2133,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(markupTextOf(value!)).toBe(`Qualidade: ${QUALITY_UNRATED}`)
   })
 
-  it('com alguém marcado, a Qualidade mostra os dois valores, o com todos primeiro', async () => {
+  it('com alguém marcado, a Qualidade abre em todas as notas, com o seletor no topo da seção', async () => {
     const admin = await newUser('Admin')
     const { scene, bruno } = await qualityScene(admin, PHASE_3)
     await addOutlier(ownerDb, scene.round, bruno, admin)
@@ -2137,25 +2141,32 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    const pair = qualityLineOf(tree).pair
-    expect(pair.excluded).toBe(1)
-    expect(pair.all).toMatchObject({ rated: true, total: 8 })
-    expect(pair.withoutOutliers).toEqual({
-      rated: true,
-      total: 4,
-      levels: [
-        { value: 'high', count: 3, share: 0.75 },
-        { value: 'medium', count: 1, share: 0.25 },
-        { value: 'low', count: 0, share: 0 },
-      ],
+    const selector = findElement(tree, QualityViewSelector)!
+    expect(selector.props).toEqual({
+      view: 'all',
+      excluded: 1,
+      href: `/projects/${scene.project}/rounds`,
     })
+    const section = findSection(tree, QualityLine)!
+    expect(typeOrderOf(section, [QualityViewSelector, QualityLine, QualityHeatmap])).toEqual([
+      QualityViewSelector,
+      QualityLine,
+      QualityHeatmap,
+    ])
 
-    expect(qualityTextOf(tree)).toContain(
-      `${AGREEMENT_ALL_LABEL} 8 notas 63% Alto 25% Médio 13% Baixo ` +
-        `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} 4 notas 75% Alto 25% Médio 0% Baixo ` +
-        `1 avaliador fora ${OUTLIER_PAIR_RESULT}`,
+    const markup = renderToStaticMarkup(selector)
+    expect(markupTextOf(selector)).toBe(
+      `${QUALITY_VIEW_ALL} ${qualityViewWithoutOutliers(1)} ${QUALITY_VIEW_RESULT}`,
     )
-    expect(tooltipTextsOf(QualityLine(qualityLineOf(tree)))).toEqual([OUTLIER_PAIR_SUMMARY])
+    expect(qualityViewWithoutOutliers(1)).toBe('Sem outliers (1 avaliador fora)')
+    expect(markup).toContain(`<span aria-current="true"`)
+    expect(markup).toContain(
+      `href="/projects/${scene.project}/rounds?qualidade=sem-outliers#qualidade"`,
+    )
+
+    expect(qualityLineOf(tree).quality).toMatchObject({ rated: true, total: 8 })
+    expect(qualityTextOf(tree)).toBe('8 notas 63% Alto 25% Médio 13% Baixo')
+    expect(qualityHeatOf(tree).observations).toHaveLength(8)
 
     const summary = findElement(RoundList(listOf(tree)), QualitySummary)!
     const value = markupTextOf(summary)
@@ -2167,6 +2178,34 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     )
   })
 
+  it('com ?qualidade=sem-outliers, a seção inteira usa só as notas de quem não foi marcado', async () => {
+    const admin = await newUser('Admin')
+    const { scene, bruno } = await qualityScene(admin, PHASE_3)
+    await addOutlier(ownerDb, scene.round, bruno, admin)
+
+    auth.userId = admin
+    const tree = await render(scene.project, { qualidade: 'sem-outliers', criterio: 'x' })
+
+    const selector = findElement(tree, QualityViewSelector)!
+    expect((selector.props as { view: string }).view).toBe('without-outliers')
+    expect(renderToStaticMarkup(selector)).toContain(
+      `href="/projects/${scene.project}/rounds?criterio=x#qualidade"`,
+    )
+
+    expect(qualityLineOf(tree).quality).toEqual({
+      rated: true,
+      total: 4,
+      levels: [
+        { value: 'high', count: 3, share: 0.75 },
+        { value: 'medium', count: 1, share: 0.25 },
+        { value: 'low', count: 0, share: 0 },
+      ],
+    })
+    expect(qualityTextOf(tree)).toBe('4 notas 75% Alto 25% Médio 0% Baixo')
+    expect(qualityHeatOf(tree).observations).toHaveLength(4)
+    expect(qualityTextOf(tree)).not.toContain(AGREEMENT_ALL_LABEL)
+  })
+
   it('com todo mundo marcado, a Qualidade diz que não sobra nota e mantém o com todos', async () => {
     const admin = await newUser('Admin')
     const { scene, ana, bruno } = await qualityScene(admin, PHASE_3)
@@ -2176,13 +2215,13 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    const pair = qualityLineOf(tree).pair
-    expect(pair.all).toMatchObject({ rated: true, total: 8 })
-    expect(pair.withoutOutliers).toEqual({ rated: false, total: 0 })
+    expect(qualityTextOf(tree)).toContain('8 notas 63% Alto')
 
-    const text = qualityTextOf(tree)
-    expect(text).toContain('8 notas 63% Alto')
+    const without = await render(scene.project, { qualidade: 'sem-outliers' })
+    expect(qualityLineOf(without).quality).toEqual({ rated: false, total: 0 })
+    const text = qualityTextOf(without)
     expect(text).toContain(QUALITY_UNRATED_WITHOUT_OUTLIERS)
+    expect(text).not.toContain('0%')
   })
 
   it('a Qualidade não usa cor de juízo em nenhum elemento', async () => {
@@ -2206,10 +2245,10 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     }
 
     const markup = renderToStaticMarkup(createElement(QualityLine, qualityLineOf(tree)))
-    expect(markup.match(/<div aria-hidden="true"[^>]* class="flex [^"]*"/g)).toHaveLength(2)
+    expect(markup.match(/<div aria-hidden="true"[^>]* class="flex [^"]*"/g)).toHaveLength(1)
     const slices = markup.match(/class="h-full bg-quality-[a-z]+"/g)
     const tones = ['high', 'medium', 'low'].map((tone) => `class="h-full bg-quality-${tone}"`)
-    expect(slices).toEqual([...tones, ...tones])
+    expect(slices).toEqual(tones)
   })
 
   it('na linha da Qualidade, o zero fica em cinza-claro e os outros pontos não', async () => {
@@ -2219,7 +2258,10 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
 
     auth.userId = admin
     const markup = renderToStaticMarkup(
-      createElement(QualityLine, qualityLineOf(await render(scene.project))),
+      createElement(
+        QualityLine,
+        qualityLineOf(await render(scene.project, { qualidade: 'sem-outliers' })),
+      ),
     )
 
     const faint = [...markup.matchAll(/<span class="[^"]*text-faint[^"]*">(.*?)<\/span>(?=<span|<\/p>)/g)]
@@ -2239,7 +2281,6 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(props.definitions).toEqual(codebook!.definitions)
     expect(props.criteria).toEqual(codebook!.criteria)
     expect(props.codebookVersionNumber).toBe(1)
-    expect(props.excluded.size).toBe(0)
 
     const markup = qualityHeatMarkupOf(tree)
     expect(rowTitlesOf(markup)).toEqual([
@@ -2273,7 +2314,6 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(text.indexOf('Clareza')).toBeLessThan(text.indexOf('Profundidade'))
     expect(text.indexOf('Profundidade')).toBeLessThan(text.indexOf('Precisão'))
     expect(text).toContain('% de notas Alto em cada definição × critério.')
-    expect(text).not.toContain(QUALITY_HEAT_OUTLIERS_NOTE)
     expect(text).not.toContain(QUALITY_PER_RESPONSE_LEAD)
     expect(text).not.toContain('Codebook v1 da rodada')
   })
@@ -2347,7 +2387,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(matrixTextOf(tree)).toContain('Profundidade')
   })
 
-  it('com alguém marcado, cada célula medida da matriz de Qualidade traz o par, o com todos em cima', async () => {
+  it('com alguém marcado, cada célula da matriz de Qualidade traz um valor só, o da escolha do seletor', async () => {
     const admin = await newUser('Admin')
     const { scene, carla } = await qualityMatrixScene(admin, { carla: true })
     await addOutlier(ownerDb, scene.round, carla!, admin)
@@ -2355,18 +2395,26 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    expect(qualityHeatOf(tree).excluded.size).toBe(1)
-
     const cells = qualityCellsOf(tree)
-    expect(cells.slice(0, 3)).toEqual(['33 38', '25 25', CELL_UNRATED_LABEL])
-    expect(cells.slice(3, 5)).toEqual(['60 75', '25 25'])
+    expect(cells.slice(0, 3)).toEqual(['33', '25', CELL_UNRATED_LABEL])
+    expect(cells.slice(3, 5)).toEqual(['60', '25'])
     expect(cells[8]).toBe(CELL_UNRATED_LABEL)
-
     expect(qualityCellMarkupsOf(tree)[3]).toContain(
-      `title="${AGREEMENT_ALL_LABEL}: Alto 60% (3) · Médio 0% (0) · Baixo 40% (2) · ` +
-        `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: Alto 75% (3) · Médio 0% (0) · Baixo 25% (1)"`,
+      'title="Alto 60% (3) · Médio 0% (0) · Baixo 40% (2)"',
     )
-    expect(qualityHeatTextOf(tree)).toContain(QUALITY_HEAT_OUTLIERS_NOTE)
+
+    const without = await render(scene.project, { qualidade: 'sem-outliers' })
+    const withoutCells = qualityCellsOf(without)
+    expect(withoutCells.slice(0, 3)).toEqual(['38', '25', CELL_UNRATED_LABEL])
+    expect(withoutCells.slice(3, 5)).toEqual(['75', '25'])
+    expect(qualityCellMarkupsOf(without)[3]).toContain(
+      'title="Alto 75% (3) · Médio 0% (0) · Baixo 25% (1)"',
+    )
+
+    for (const markup of [...qualityCellMarkupsOf(tree), ...qualityCellMarkupsOf(without)]) {
+      expect(markup).not.toContain(AGREEMENT_ALL_LABEL)
+      expect(markup).not.toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
+    }
   })
 
   it('sem ninguém marcado, a matriz de Qualidade não traz os rótulos do par', async () => {
@@ -2382,10 +2430,14 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
       expect(markup).not.toContain(AGREEMENT_ALL_LABEL)
       expect(markup).not.toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
     }
-    expect(qualityHeatTextOf(tree)).not.toContain(QUALITY_HEAT_OUTLIERS_NOTE)
+    expect(findElement(tree, QualityViewSelector)).toBeNull()
+
+    const ignored = await render(scene.project, { qualidade: 'sem-outliers' })
+    expect(qualityCellsOf(ignored)[3]).toBe('60')
+    expect(findElement(ignored, QualityViewSelector)).toBeNull()
   })
 
-  it('a célula avaliada só pelo marcado diz que não sobra nota, ao lado do com todos', async () => {
+  it('a célula avaliada só pelo marcado fica sem nota quando o seletor tira os outliers', async () => {
     const admin = await newUser('Admin')
     const scene = await roundWith(admin, 1, { shape: MATRIX_SHAPE, phase: PHASE_3 })
     const ana = await newEvaluator(scene.project, 'Ana')
@@ -2401,11 +2453,13 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    expect(qualityCellsOf(tree)[6]).toBe(`0 ${CELL_UNRATED_LABEL}`)
+    expect(qualityCellsOf(tree)[6]).toBe('0')
     expect(qualityCellMarkupsOf(tree)[6]).toContain(
-      `title="${AGREEMENT_ALL_LABEL}: Alto 0% (0) · Médio 0% (0) · Baixo 100% (1) · ` +
-        `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: ${QUALITY_UNRATED_WITHOUT_OUTLIERS}"`,
+      'title="Alto 0% (0) · Médio 0% (0) · Baixo 100% (1)"',
     )
+
+    const without = await render(scene.project, { qualidade: 'sem-outliers' })
+    expect(qualityCellsOf(without)[6]).toBe(CELL_UNRATED_LABEL)
   })
 
   it('a matriz de Qualidade é da versão de codebook que a rodada fixou, e não da vigente', async () => {
@@ -3175,7 +3229,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
 
 
 
-  it('com alguém marcado, o critério por resposta traz os dois valores, o com todos primeiro', async () => {
+  it('com alguém marcado, o critério por resposta segue o seletor, com um valor só', async () => {
     const admin = await newUser('Admin')
     const scene = await perResponseScene(admin)
     const carla = await newEvaluator(scene.project, 'Carla')
@@ -3186,11 +3240,13 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
 
     auth.userId = admin
     const text = qualityHeatTextOf(await render(scene.project))
+    expect(text).toContain(`${QUALITY_PER_RESPONSE_LEAD} Diversity 40% Alto Como ler`)
+    expect(text).not.toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
 
-    expect(text).toContain(
-      `${QUALITY_PER_RESPONSE_LEAD} Diversity 40% Alto ` +
-        `(${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: 25% Alto)`,
+    const without = qualityHeatTextOf(
+      await render(scene.project, { qualidade: 'sem-outliers' }),
     )
+    expect(without).toContain(`${QUALITY_PER_RESPONSE_LEAD} Diversity 25% Alto Como ler`)
   })
 
   it('sem definição no codebook da rodada, a Qualidade diz que não há o que cruzar, sem mapa nem legenda', async () => {
@@ -3304,7 +3360,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     const highTree = await render(high.project)
     const lowTree = await render(low.project)
 
-    expect(qualityLineOf(highTree).pair.all).toMatchObject({
+    expect(qualityLineOf(highTree).quality).toMatchObject({
       rated: true,
       levels: [
         { value: 'high', share: 1 },
@@ -3312,7 +3368,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
         { value: 'low', share: 0 },
       ],
     })
-    expect(qualityLineOf(lowTree).pair.all).toMatchObject({
+    expect(qualityLineOf(lowTree).quality).toMatchObject({
       rated: true,
       levels: [
         { value: 'high', share: 0 },
@@ -3434,13 +3490,13 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
 
       const observations = criterionTableOf(tree).observations
       expect(qualityLineOf(tree)).toEqual({
-        pair: qualityPair(observations, new Set<string>()),
+        quality: qualityPair(observations, new Set<string>()).all,
+        unrated: QUALITY_UNRATED,
       })
       expect(qualityHeatOf(tree)).toEqual({
         definitions: criterionTableOf(tree).definitions,
         criteria: criterionTableOf(tree).criteria,
         observations,
-        excluded: new Set<string>(),
         codebookVersionNumber: 1,
       })
 

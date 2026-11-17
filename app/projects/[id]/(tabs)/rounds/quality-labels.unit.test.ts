@@ -4,8 +4,9 @@ import {
   QUALITY_ALL_DEFINITIONS,
   QUALITY_HEAT_CAPTION,
   QUALITY_HEAT_LEGEND,
-  QUALITY_HEAT_OUTLIERS_NOTE,
   QUALITY_HINT,
+  QUALITY_VIEW_ALL,
+  QUALITY_VIEW_RESULT,
   QUALITY_SERIES_HINT,
   QUALITY_SERIES_NOTE,
   definitionsCoverage,
@@ -15,6 +16,7 @@ import {
   levelText,
   levelsText,
   qualityTotal,
+  qualityViewWithoutOutliers,
   wholeLevelsText,
 } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
 import {
@@ -80,7 +82,7 @@ describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () =
       expect.arrayContaining([
         QUALITY_HEAT_CAPTION,
         QUALITY_HEAT_LEGEND,
-        QUALITY_HEAT_OUTLIERS_NOTE,
+        QUALITY_VIEW_RESULT,
         QUALITY_SERIES_HINT,
         QUALITY_SERIES_NOTE,
       ]),
@@ -121,12 +123,16 @@ describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () =
     expect(QUALITY_HEAT_LEGEND).toContain('não vale 0%')
   })
 
-  it('a legenda do mapa diz que o par vem com todos primeiro', () => {
-    const all = QUALITY_HEAT_LEGEND.indexOf(AGREEMENT_ALL_LABEL)
-    const without = QUALITY_HEAT_LEGEND.indexOf(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
+  it('a legenda do mapa fala do seletor, e não do par em cada célula', () => {
+    expect(QUALITY_HEAT_LEGEND).toContain(`“${QUALITY_VIEW_ALL}”`)
+    expect(QUALITY_HEAT_LEGEND).toContain('seletor no topo da seção')
+    expect(QUALITY_HEAT_LEGEND).not.toContain(AGREEMENT_ALL_LABEL)
+    expect(QUALITY_HEAT_LEGEND).not.toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
+  })
 
-    expect(all).toBeGreaterThanOrEqual(0)
-    expect(without).toBeGreaterThan(all)
+  it('a opção sem outliers diz quantos avaliadores ficam fora', () => {
+    expect(qualityViewWithoutOutliers(1)).toBe('Sem outliers (1 avaliador fora)')
+    expect(qualityViewWithoutOutliers(2)).toBe('Sem outliers (2 avaliadores fora)')
   })
 
   it('as frases da série não falam de ICR, de faixa nem comparam fases', () => {

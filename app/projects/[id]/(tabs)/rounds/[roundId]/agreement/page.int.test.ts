@@ -249,13 +249,18 @@ describe('app/projects/[id]/rounds/[roundId]/agreement — a concordância de um
     const [fromPage] = qualitySectionsOf(await render(project, rounds[1]))
 
     expect(titleOf(fromPage)).toBe('Qualidade na rodada 2, fechada')
-    expect(renderToStaticMarkup(fromPage)).toBe(renderToStaticMarkup(fromRounds))
+    expect(
+      renderToStaticMarkup(fromPage).replaceAll(`/rounds/${rounds[1]}/agreement?`, '/rounds?'),
+    ).toBe(renderToStaticMarkup(fromRounds))
+    expect(renderToStaticMarkup(fromPage)).toContain(
+      `href="/projects/${project}/rounds/${rounds[1]}/agreement?qualidade=sem-outliers#qualidade"`,
+    )
 
     const [earlier] = qualitySectionsOf(await render(project, rounds[0]))
     expect(titleOf(earlier)).toBe('Qualidade na rodada 1, fechada')
     const [panel] = findAll(earlier, QualityLine)
-    expect((panel.props as Parameters<typeof QualityLine>[0]).pair).toEqual(
-      qualityPair(await loadRoundObservations(rounds[0]), new Set()),
+    expect((panel.props as Parameters<typeof QualityLine>[0]).quality).toEqual(
+      qualityPair(await loadRoundObservations(rounds[0]), new Set()).all,
     )
   })
 

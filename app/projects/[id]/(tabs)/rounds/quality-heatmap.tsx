@@ -7,8 +7,6 @@ import type {
 import type { RoundObservation } from './agreement'
 import type { MatrixColumn, MeasuredCell } from './agreement-matrix'
 import {
-  AGREEMENT_ALL_LABEL,
-  AGREEMENT_WITHOUT_OUTLIERS_LABEL,
   CELL_NOT_APPLICABLE_TITLE,
   CELL_UNRATED_LABEL,
   matrixVersionNote,
@@ -19,12 +17,9 @@ import {
   QUALITY_ALL_DEFINITIONS,
   QUALITY_HEAT_CAPTION,
   QUALITY_HEAT_LEGEND,
-  QUALITY_HEAT_OUTLIERS_NOTE,
   QUALITY_NOT_APPLICABLE,
   QUALITY_PER_RESPONSE_LEAD,
-  QUALITY_UNRATED_WITHOUT_OUTLIERS,
   definitionsCoverage,
-  levelShareText,
   wholeLevelsText,
 } from './quality-labels'
 import { formatWholeShare, wholeShareNumber } from './share'
@@ -51,17 +46,11 @@ function highOf(quality: Quality) {
   return quality.rated ? quality.levels[0] : null
 }
 
-function pairTitle({ all, withoutOutliers }: QualityPair): string | undefined {
-  if (!all.rated) return undefined
-  if (!withoutOutliers) return wholeLevelsText(all.levels)
-  const without = withoutOutliers.rated
-    ? wholeLevelsText(withoutOutliers.levels)
-    : QUALITY_UNRATED_WITHOUT_OUTLIERS
-  return (
-    `${AGREEMENT_ALL_LABEL}: ${wholeLevelsText(all.levels)} · ` +
-    `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: ${without}`
-  )
+function levelsTitle(quality: Quality): string | undefined {
+  return quality.rated ? wholeLevelsText(quality.levels) : undefined
 }
+
+const NONE: ReadonlySet<string> = new Set<string>()
 
 const cellClass = 'h-8 min-w-16 rounded-[5px] px-2 text-center align-middle tabular-nums'
 
@@ -90,12 +79,9 @@ function HeatCell({ cell }: { cell: MeasuredCell<QualityPair> }) {
     )
   }
 
-  const { withoutOutliers } = cell.value
-  const without = withoutOutliers ? highOf(withoutOutliers) : null
-
   return (
     <td
-      title={pairTitle(cell.value)}
+      title={levelsTitle(cell.value.all)}
       style={heatStyle(high.share)}
       className={cx(
         cellClass,
@@ -104,11 +90,6 @@ function HeatCell({ cell }: { cell: MeasuredCell<QualityPair> }) {
       )}
     >
       {wholeShareNumber(high.share)}
-      {withoutOutliers ? (
-        <span className="block text-[11px] leading-tight font-normal opacity-80">
-          {without ? wholeShareNumber(without.share) : CELL_UNRATED_LABEL}
-        </span>
-      ) : null}
     </td>
   )
 }
@@ -163,11 +144,9 @@ function PerResponseValue({
   cell: MeasuredCell<QualityPair>
 }) {
   const high = cell.state === 'measured' ? highOf(cell.value.all) : null
-  const withoutOutliers = cell.state === 'measured' ? cell.value.withoutOutliers : null
-  const without = withoutOutliers ? highOf(withoutOutliers) : null
 
   return (
-    <span title={cell.state === 'measured' ? pairTitle(cell.value) : undefined}>
+    <span title={cell.state === 'measured' ? levelsTitle(cell.value.all) : undefined}>
       {column.name}{' '}
       {high ? (
         <span className={cx(high.count === 0 && 'text-faint')}>
@@ -177,13 +156,6 @@ function PerResponseValue({
       ) : (
         <span className="text-muted">{CELL_UNRATED_LABEL}</span>
       )}
-      {withoutOutliers ? (
-        <span className="text-muted">
-          {' '}
-          ({AGREEMENT_WITHOUT_OUTLIERS_LABEL}:{' '}
-          {without ? levelShareText(without) : CELL_UNRATED_LABEL})
-        </span>
-      ) : null}
     </span>
   )
 }
@@ -192,13 +164,11 @@ export function QualityHeatmap({
   definitions,
   criteria,
   observations,
-  excluded,
   codebookVersionNumber,
 }: {
   definitions: CodebookDefinition[]
   criteria: CodebookCriterion[]
   observations: RoundObservation[]
-  excluded: ReadonlySet<string>
   codebookVersionNumber: number
 }) {
   if (definitions.length === 0 || criteria.length === 0) {
@@ -210,10 +180,10 @@ export function QualityHeatmap({
     )
   }
 
-  const totals = qualityByCriterion(definitions, criteria, observations, excluded)
+  const totals = qualityByCriterion(definitions, criteria, observations, NONE)
   const heatTotals = totals.filter(({ column }) => !column.isPerResponse)
   const perResponse = totals.filter(({ column }) => column.isPerResponse)
-  const rows = qualityMatrix(definitions, criteria, observations, excluded).flatMap((row) =>
+  const rows = qualityMatrix(definitions, criteria, observations, NONE).flatMap((row) =>
     row.definition
       ? [
           {
@@ -231,7 +201,6 @@ export function QualityHeatmap({
           <p className="m-0 text-xs text-muted">
             {QUALITY_HEAT_CAPTION}
             <HeatScale />
-            {excluded.size > 0 ? <span className="block">{QUALITY_HEAT_OUTLIERS_NOTE}</span> : null}
           </p>
 
           <div className="overflow-x-auto">

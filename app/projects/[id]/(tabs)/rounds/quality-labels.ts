@@ -3,12 +3,7 @@ import { scaleLabel } from '../evaluate/scale'
 import { PHASE_3, PHASE_4 } from '../../pipeline/preconditions'
 import type { QualityLevel } from './quality'
 import { formatShare, formatWholeShare } from './share'
-import {
-  AGREEMENT_ALL_LABEL,
-  AGREEMENT_WITHOUT_OUTLIERS_LABEL,
-  CELL_NOT_APPLICABLE_TITLE,
-  CELL_UNRATED_LABEL,
-} from './agreement-labels'
+import { CELL_NOT_APPLICABLE_TITLE, CELL_UNRATED_LABEL } from './agreement-labels'
 
 export const QUALITY_LABEL = 'Qualidade'
 
@@ -30,8 +25,17 @@ export const QUALITY_HEAT_CAPTION =
   `% de notas ${scaleLabel('high')} em cada definição × critério. ` +
   `Quanto mais escuro, mais ${scaleLabel('high')}.`
 
-export const QUALITY_HEAT_OUTLIERS_NOTE =
-  `Com avaliador marcado como outlier, o número de baixo é ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}.`
+export const QUALITY_VIEW_ALL = 'Todas as notas'
+
+export function qualityViewWithoutOutliers(excluded: number): string {
+  return `Sem outliers (${plural(excluded, 'avaliador fora', 'avaliadores fora')})`
+}
+
+export const QUALITY_VIEW_LABEL = 'Notas usadas na seção'
+
+export const QUALITY_VIEW_RESULT =
+  `O resultado da rodada é o de “${QUALITY_VIEW_ALL}”; sem outliers é o mesmo dado, ` +
+  'só sem as notas de quem foi marcado.'
 
 export const QUALITY_HEAT_LEGEND =
   `Cada célula traz a porcentagem de notas ${scaleLabel('high')} daquela definição × ` +
@@ -44,8 +48,9 @@ export const QUALITY_HEAT_LEGEND =
   `“${CELL_UNRATED_LABEL}” é célula que existe no codebook e que ninguém avaliou ainda, ` +
   'e não vale 0%. Os critérios por resposta julgam a resposta inteira, sem definição, e ' +
   'ficam na frase abaixo da grade. ' +
-  'Com avaliador marcado como outlier, cada célula traz os dois valores, ' +
-  `${AGREEMENT_ALL_LABEL} em cima e ${AGREEMENT_WITHOUT_OUTLIERS_LABEL} embaixo.`
+  'Com avaliador marcado como outlier, o seletor no topo da seção escolhe entre ' +
+  `“${QUALITY_VIEW_ALL}” e as notas sem os outliers, e a seção inteira, do resumo à ` +
+  'grade, segue a escolha.'
 
 export const QUALITY_SERIES_HINT =
   `A distribuição das notas de cada rodada das Fases ${PHASE_3} e ${PHASE_4}, um ponto por rodada.`

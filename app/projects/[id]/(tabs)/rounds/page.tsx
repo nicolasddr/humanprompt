@@ -40,7 +40,13 @@ import { criterionAgreements, roundAgreements, weakestCriterion } from './agreem
 import { isConcentrated } from './agreement-labels'
 import { hasReadingGuidance, readingGuidance } from './reading-guidance'
 import { ReadingGuidanceNote } from './reading-guidance-note'
-import { ROUNDS_SECTION_ID, ReadingShortcuts, readingShortcuts } from './reading-shortcuts'
+import {
+  ROUNDS_SECTION_ID,
+  ReadingShortcuts,
+  readingShortcuts,
+  withCriterion,
+} from './reading-shortcuts'
+import { parseQualityView, withQualityView } from './quality-view'
 import { referenceComparison } from './reference-comparison'
 import {
   REFERENCE_COMPARISON_HELP,
@@ -66,6 +72,7 @@ export default async function ProjectRoundsPage({
     criterio?: string
     ordem?: string | string[]
     pagina?: string | string[]
+    qualidade?: string | string[]
   }>
 }) {
   const { id } = await params
@@ -180,6 +187,7 @@ export default async function ProjectRoundsPage({
     ? rounds.find((round) => round.id === openRound.id)
     : undefined
   const roundsHref = `/projects/${project.id}/rounds`
+  const qualityView = parseQualityView(query.qualidade)
   const generating = query.gerar !== undefined
 
   const codebookVersionNumber = codebook?.version?.versionNumber ?? null
@@ -327,7 +335,7 @@ export default async function ProjectRoundsPage({
             definitions: focusDefinitions,
             criteria: focusCriteria,
             ...(query.criterio ? { criterion: query.criterio } : {}),
-            href: roundsHref,
+            href: withQualityView(roundsHref, qualityView),
             ...(focusParticipation ? { participation: focusParticipation } : {}),
           })
         : null}
@@ -339,6 +347,8 @@ export default async function ProjectRoundsPage({
             excluded: focusExcluded,
             definitions: focusDefinitions,
             criteria: focusCriteria,
+            view: qualityView,
+            href: withCriterion(roundsHref, query.criterio ?? null),
           })
         : null}
 
