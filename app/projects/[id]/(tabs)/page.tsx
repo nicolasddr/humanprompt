@@ -66,11 +66,9 @@ import { SubmitButton } from '@/app/components/submit-button'
 import { ButtonLink } from '@/app/components/ui/button'
 import { Callout } from '@/app/components/ui/panel'
 import { Badge } from '@/app/components/ui/badge'
-import { cardClassName } from '@/app/components/ui/card'
 import { InfoTooltip } from '@/app/components/ui/tooltip'
 import { OpenLink } from '@/app/components/ui/open-link'
 import { StatCard } from '@/app/components/ui/stat'
-import { Disclosure } from '@/app/components/ui/disclosure'
 import { Section } from '@/app/components/ui/section'
 
 type AgreementData = {
@@ -296,7 +294,6 @@ export default async function ProjectPage({
     : []
 
   const showSeries = Boolean(series?.rounds.some((round) => round.closedAt !== null))
-  const showRoundsLink = showSeries || Boolean(focusQuality) || qualityPoints.length > 1
 
   const phase2 = agreement ? phase2ChecklistData(agreement) : null
   const phase3 =
@@ -318,40 +315,24 @@ export default async function ProjectPage({
       }
     : null
 
-  const completedClassName = cardClassName({ padding: 'lg', className: 'mt-3' })
-  const checklists = phase1Inputs
-    ? [
-        <PipelineChecklist
-          key="phase-1"
-          className={project.phase > PHASE_1 ? completedClassName : undefined}
-          projectId={project.id}
-          phase={project.phase}
-          inputs={phase1Inputs}
-        />,
-        phase2 && project.phase >= PHASE_2 ? (
-          <Phase2Checklist
-            key="phase-2"
-            className={project.phase > PHASE_2 ? completedClassName : undefined}
-            projectId={project.id}
-            phase={project.phase}
-            inputs={phase2.inputs}
-            lastRound={phase2.lastRound}
-          />
-        ) : null,
-        phase3 && project.phase >= PHASE_3 ? (
-          <Phase3Checklist
-            key="phase-3"
-            className={project.phase > PHASE_3 ? completedClassName : undefined}
-            projectId={project.id}
-            phase={project.phase}
-            inputs={phase3.inputs}
-            lastRound={phase3.lastRound}
-          />
-        ) : null,
-      ].filter((checklist) => checklist !== null)
-    : []
-  const currentChecklist = phase4 ? null : (checklists.at(-1) ?? null)
-  const completedChecklists = phase4 ? checklists : checklists.slice(0, -1)
+  const currentChecklist =
+    !phase1Inputs || phase4 ? null : phase3 && project.phase >= PHASE_3 ? (
+      <Phase3Checklist
+        projectId={project.id}
+        phase={project.phase}
+        inputs={phase3.inputs}
+        lastRound={phase3.lastRound}
+      />
+    ) : phase2 && project.phase >= PHASE_2 ? (
+      <Phase2Checklist
+        projectId={project.id}
+        phase={project.phase}
+        inputs={phase2.inputs}
+        lastRound={phase2.lastRound}
+      />
+    ) : (
+      <PipelineChecklist projectId={project.id} phase={project.phase} inputs={phase1Inputs} />
+    )
 
   const canSteerPhase = isAdmin && project.status === 'active'
 
@@ -511,7 +492,7 @@ export default async function ProjectPage({
           {series && showSeries ? (
             <Section
               title="Confiabilidade por rodada"
-              hint="O α de cada critério, um ponto por rodada, em ordem cronológica."
+              help="O α de cada critério, um ponto por rodada, em ordem cronológica."
             >
               <AgreementSeriesChart series={series} />
             </Section>
@@ -520,7 +501,7 @@ export default async function ProjectPage({
           {showSeries ? (
             <Section
               title={CONCORDANCE_SERIES_TITLE}
-              hint={CONCORDANCE_SERIES_HINT}
+              help={CONCORDANCE_SERIES_HINT}
             >
               <ConcordanceSeriesChart points={concordancePoints} />
             </Section>
@@ -538,26 +519,12 @@ export default async function ProjectPage({
           {qualityPoints.length > 1 ? (
             <Section
               title="Qualidade por rodada"
-              hint={QUALITY_SERIES_HINT}
+              help={QUALITY_SERIES_HINT}
             >
               <QualitySeriesChart points={qualityPoints} />
             </Section>
           ) : null}
 
-          {showRoundsLink ? (
-            <p className="m-0 mt-4 text-xs">
-              <OpenLink href={`/projects/${project.id}/rounds`}>Abrir rodadas →</OpenLink>
-            </p>
-          ) : null}
-
-          {completedChecklists.length > 0 ? (
-            <Disclosure
-              className="mt-4"
-              summary={`Fases concluídas (${completedChecklists.length})`}
-            >
-              {completedChecklists}
-            </Disclosure>
-          ) : null}
         </>
       ) : null}
 

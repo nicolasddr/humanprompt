@@ -5,7 +5,6 @@ import { SCALE, scaleLabel, type ScaleValue } from '../evaluate/scale'
 import type { Quality } from './quality'
 import { QualityValue } from './quality-panel'
 import {
-  QUALITY_SERIES_NOTE,
   QUALITY_SERIES_NUMBERS,
   QUALITY_UNRATED,
   QUALITY_UNRATED_WITHOUT_OUTLIERS,
@@ -113,8 +112,6 @@ export function QualitySeriesChart({ points }: { points: readonly QualitySeriesP
           ))}
         </ul>
       </Disclosure>
-
-      <p className="m-0 text-xs text-muted">{QUALITY_SERIES_NOTE}</p>
     </div>
   )
 }

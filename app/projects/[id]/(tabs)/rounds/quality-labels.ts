@@ -36,10 +36,6 @@ export const QUALITY_VIEW_RESULT =
 export const QUALITY_SERIES_HINT =
   `A distribuição das notas de cada rodada das Fases ${PHASE_3} e ${PHASE_4}, um ponto por rodada.`
 
-export const QUALITY_SERIES_NOTE =
-  'Um ponto por rodada, e nenhum valor que junte rodadas: cada distribuição descreve as ' +
-  'versões de codebook e de prompt da sua rodada, listadas nos números de cada rodada.'
-
 export const QUALITY_SERIES_NUMBERS = 'Ver os números de cada rodada'
 
 export { formatShare, formatWholeShare }

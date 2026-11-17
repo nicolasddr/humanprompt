@@ -43,7 +43,6 @@ import {
 } from '@/app/projects/[id]/pipeline/last-round-summary'
 import { AdvancePhase } from '@/app/projects/[id]/pipeline/advance-phase'
 import { Phase4Return } from '@/app/projects/[id]/pipeline/phase-4-return'
-import { Disclosure } from '@/app/components/ui/disclosure'
 import { Badge } from '@/app/components/ui/badge'
 import { InfoTooltip } from '@/app/components/ui/tooltip'
 import { PhaseBar } from '@/app/projects/[id]/phase-bar'
@@ -69,7 +68,6 @@ import { QualityLine } from '@/app/projects/[id]/(tabs)/rounds/quality-line'
 import { QualitySeriesChart } from '@/app/projects/[id]/(tabs)/rounds/quality-series-chart'
 import {
   QUALITY_SERIES_HINT,
-  QUALITY_SERIES_NOTE,
   QUALITY_SERIES_NUMBERS,
 } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
 import { phaseRuns } from '@/app/projects/[id]/(tabs)/rounds/agreement-series'
@@ -959,7 +957,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     }
   })
 
-  it('só o painel da fase atual fica aberto; os das fases anteriores vão para "Fases concluídas (N)", fechado', async () => {
+  it('só o painel da fase atual aparece; os das fases anteriores saem da visão geral', async () => {
     const admin = await newUser('Admin')
     const evaluator = await newUser('Avaliador')
     const phase1 = await newProject(admin)
@@ -971,47 +969,40 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     async function panelsOf(id: string, userId = admin) {
       auth.userId = userId
       const tree = await render(id)
-      const disclosure = findElement(tree, Disclosure)
-      const props = disclosure?.props as
-        | { summary: unknown; defaultOpen?: boolean; children: unknown }
-        | undefined
       return {
+        tree,
         avancar: elementWithProp(tree, 'id', 'avancar'),
         voltar: elementWithProp(tree, 'id', 'voltar'),
-        summary: props?.summary,
-        defaultOpen: props?.defaultOpen,
-        completed: props ? typesOf(props.children) : [],
+        checklists: [PipelineChecklist, Phase2Checklist, Phase3Checklist].filter(
+          (type) => findElement(tree, type) !== null,
+        ),
       }
     }
 
     const first = await panelsOf(phase1)
     expect(findElement(first.avancar, PipelineChecklist)).toBeTruthy()
-    expect(first.summary).toBeUndefined()
+    expect(first.checklists).toEqual([PipelineChecklist])
 
     const second = await panelsOf(phase2)
     expect(findElement(second.avancar, Phase2Checklist)).toBeTruthy()
-    expect(findElement(second.avancar, PipelineChecklist)).toBeNull()
-    expect(second.summary).toBe('Fases concluídas (1)')
-    expect(second.defaultOpen).toBeFalsy()
-    expect(second.completed).toEqual([PipelineChecklist])
+    expect(second.checklists).toEqual([Phase2Checklist])
 
     const third = await panelsOf(phase3)
     expect(findElement(third.avancar, Phase3Checklist)).toBeTruthy()
-    expect(findElement(third.avancar, Phase2Checklist)).toBeNull()
-    expect(third.summary).toBe('Fases concluídas (2)')
-    expect(third.completed).toEqual([PipelineChecklist, Phase2Checklist])
+    expect(third.checklists).toEqual([Phase3Checklist])
 
     const fourth = await panelsOf(phase4)
     expect(fourth.avancar).toBeNull()
     expect(findElement(fourth.voltar, Phase4Return)).toBeTruthy()
-    expect(findElement(fourth.voltar, Phase3Checklist)).toBeNull()
-    expect(fourth.summary).toBe('Fases concluídas (3)')
-    expect(fourth.defaultOpen).toBeFalsy()
-    expect(fourth.completed).toEqual([PipelineChecklist, Phase2Checklist, Phase3Checklist])
+    expect(fourth.checklists).toEqual([])
+
+    for (const { tree } of [first, second, third, fourth]) {
+      expect(deepText(tree)).not.toContain('Fases concluídas')
+    }
 
     const asEvaluator = await panelsOf(phase4, evaluator)
-    expect(asEvaluator.summary).toBeUndefined()
     expect(asEvaluator.voltar).toBeNull()
+    expect(asEvaluator.checklists).toEqual([])
   })
 
   it('na Fase 4, a barra de fases mostra ao Administrador o selo de codebook e prompt congelados', async () => {
@@ -1241,7 +1232,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(text).toContain(bandLabel('questionable'))
   })
 
-  it('na Fase 3 o painel diz que a Fase 2 foi concluída e não oferece avanço', async () => {
+  it('na Fase 3 a visão geral não mostra o painel da Fase 2', async () => {
     const admin = await newUser('Admin')
     const project = await newProject(admin, PHASE_3)
     const promptVersion = await addPromptVersion(ownerDb, project, admin)
@@ -1250,12 +1241,9 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     auth.userId = admin
     const tree = await render(project)
 
-    expect(phase2Of(tree)).toBeTruthy()
+    expect(phase2Of(tree)).toBeNull()
     expect(phase2AdvanceOf(tree)).toBeNull()
-    expect(phase2TextOf(tree)).toContain(`Fase ${PHASE_2} concluída`)
-    expect(phase2TextOf(tree)).toContain('Nenhuma rodada aberta pronto')
-    expect(phase2TextOf(tree)).not.toContain('Próximo passo')
-    expect(primaryActionsOf(checklistMarkupOf(tree, Phase2Checklist))).toEqual([])
+    expect(deepText(tree)).not.toContain(`Fase ${PHASE_2} concluída`)
   })
 
   it('o avaliador não vê o painel de avanço para a Fase 3, nem na Fase 2 nem na Fase 3', async () => {
@@ -1305,8 +1293,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(advance!.target).toBe(PHASE_4)
     expect(advance!.lines).toEqual(phase4ConfirmationLines())
 
-    expect(phase2Of(tree)!.lastRound?.roundNumber).toBe(1)
-    expect(phase2Of(tree)!.lastRound?.quality).toBeUndefined()
+    expect(phase2Of(tree)).toBeNull()
 
     const last = phase3Of(tree)!.lastRound
     expect(last?.roundNumber).toBe(2)
@@ -1388,7 +1375,6 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     auth.userId = admin
     const tree = await render(project)
 
-    expect(phase2Of(tree)!.inputs).toEqual({ openRoundNumber: null, closedRounds: 2 })
     expect(phase3Of(tree)!.inputs).toEqual({
       openRoundNumber: null,
       closedRounds: 0,
@@ -1549,7 +1535,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(phase3TextOf(trees.allLow)).toContain('Baixo 100% (6)')
   })
 
-  it('na Fase 4 o painel diz que a Fase 3 foi concluída, não oferece avanço e não fala em retorno', async () => {
+  it('na Fase 4 a visão geral não mostra o painel da Fase 3 nem oferece avanço', async () => {
     const admin = await newUser('Admin')
     const project = await newProject(admin, PHASE_4)
     const promptVersion = await addPromptVersion(ownerDb, project, admin)
@@ -1564,18 +1550,12 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     const tree = await render(project)
 
     expect(phase2AdvanceOf(tree)).toBeNull()
-    expect(phase3Of(tree)).toBeTruthy()
+    expect(phase3Of(tree)).toBeNull()
     expect(phase3AdvanceOf(tree)).toBeNull()
-
-    const text = phase3TextOf(tree)
-    expect(text).toContain(`Fase ${PHASE_3} concluída`)
-    expect(text).toContain('continuam aqui para consulta')
-    expect(text).not.toContain('Próximo passo')
-    expect(primaryActionsOf(checklistMarkupOf(tree, Phase3Checklist))).toEqual([])
-    expect(text).not.toMatch(/\b(voltar|volta|retorno|retornar)\b/i)
+    expect(deepText(tree)).not.toContain(`Fase ${PHASE_3} concluída`)
   })
 
-  it('o painel da Fase 2 lê só as rodadas da Fase 2: a rodada aberta da Fase 3 não vira pendência dele', async () => {
+  it('na Fase 3, o painel lê a rodada aberta da Fase 3, e a fechada da Fase 2 não conta', async () => {
     const admin = await newUser('Admin')
     const project = await newProject(admin, PHASE_3)
     const promptVersion = await addPromptVersion(ownerDb, project, admin)
@@ -1590,10 +1570,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     auth.userId = admin
     const tree = await render(project)
 
-    expect(phase2Of(tree)!.inputs).toEqual({ openRoundNumber: null, closedRounds: 1 })
-    expect(phase2TextOf(tree)).not.toContain(
-      phase2BlockerMessage({ key: 'open_round', roundNumber: 2 }),
-    )
+    expect(phase2Of(tree)).toBeNull()
     expect(phase3Of(tree)!.inputs).toEqual({
       openRoundNumber: 2,
       closedRounds: 0,
@@ -1713,10 +1690,10 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(findElement(section, AgreementSeriesChart)).toBeNull()
     expect(sectionWith(tree, AgreementSeriesChart)).not.toBe(section)
     expect(hasProp(section, 'href', `/projects/${project}/rounds`)).toBe(false)
-    expect(roundsLinksOf(tree, project)).toHaveLength(1)
+    expect(roundsLinksOf(tree, project)).toHaveLength(0)
   })
 
-  it('com uma rodada fechada da Fase 2 e uma aberta da Fase 3, a visão geral tem um só "Abrir rodadas →", depois da Confiabilidade e da Qualidade, e não repete a Qualidade por rodada', async () => {
+  it('com uma rodada fechada da Fase 2 e uma aberta da Fase 3, a visão geral não tem "Abrir rodadas →" e não repete a Qualidade por rodada', async () => {
     const admin = await newUser('Admin')
     const project = await newProject(admin, PHASE_3)
     const ana = await addActiveEvaluator(ownerDb, project, await newUser('Ana'))
@@ -1745,17 +1722,8 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(findElement(tree, QualitySeriesChart)).toBeNull()
     expect(deepText(tree)).not.toContain('Qualidade por rodada')
 
-    const links = roundsLinksOf(tree, project)
-    expect(links).toHaveLength(1)
-    expect((links[0].props as { children: unknown }).children).toBe('Abrir rodadas →')
-    expect(seriesMarkupOf(tree)).not.toContain('Abrir rodadas')
-    expect(hasProp(sectionWith(tree, QualityPanel), 'href', `/projects/${project}/rounds`)).toBe(
-      false,
-    )
-
-    const page = deepText(tree)
-    expect(page.indexOf('Confiabilidade por rodada')).toBeLessThan(page.indexOf('Abrir rodadas →'))
-    expect(page.indexOf('Qualidade - Rodada 2')).toBeLessThan(page.indexOf('Abrir rodadas →'))
+    expect(roundsLinksOf(tree, project)).toHaveLength(0)
+    expect(deepText(tree)).not.toContain('Abrir rodadas')
   })
 
   it('a visão geral não mostra Qualidade quando a rodada em foco é da Fase 2, mesmo com o projeto na Fase 3', async () => {
@@ -1887,7 +1855,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(text).toContain('Aberta')
     expect(text).not.toContain(AGREEMENT_ALL_LABEL)
     expect(text).not.toContain('média')
-    expect(text).toContain(QUALITY_SERIES_NOTE)
+    expect(text).not.toContain('nenhum valor que junte rodadas')
 
     const { chart, numbers } = qualitySeriesPartsOf(tree)
     expect(chart).toContain(
@@ -1912,9 +1880,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(section).not.toBe(sectionWith(tree, QualityPanel))
     expect(section).not.toBe(sectionWith(tree, AgreementSeriesChart))
     expect(qualitySeriesMarkupOf(tree)).not.toContain(`href="/projects/${project}/rounds"`)
-    expect(roundsLinksOf(tree, project)).toHaveLength(1)
-    const page = deepText(tree)
-    expect(page.indexOf('Qualidade por rodada')).toBeLessThan(page.indexOf('Abrir rodadas →'))
+    expect(roundsLinksOf(tree, project)).toHaveLength(0)
   })
 
   it('as rodadas da Fase 2 não entram na série de Qualidade, e continuam na de Confiabilidade', async () => {
@@ -2208,7 +2174,8 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
 
     const props = sectionWith(tree, ConcordanceSeriesChart)!.props as SectionProps
     expect(props.title).toBe('Concordância por rodada')
-    expect(props.hint).toBe(CONCORDANCE_SERIES_HINT)
+    expect(props.help).toBe(CONCORDANCE_SERIES_HINT)
+    expect(props.hint).toBeUndefined()
     expect(props.more).toBeUndefined()
 
     const page = deepText(tree)
@@ -2230,8 +2197,8 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(markupText(markup)).toContain('R1 R2 R3 R4 Fase 2 Fase 3')
 
     const props = sectionWith(tree, AgreementSeriesChart)!.props as SectionProps
-    expect(props.hint).toBe('O α de cada critério, um ponto por rodada, em ordem cronológica.')
-    expect(props.help).toBeUndefined()
+    expect(props.help).toBe('O α de cada critério, um ponto por rodada, em ordem cronológica.')
+    expect(props.hint).toBeUndefined()
     expect(props.more).toBeUndefined()
   })
 
@@ -2354,8 +2321,8 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     auth.userId = admin
     const section = sectionWith(await render(project), QualitySeriesChart)
     const props = section!.props as SectionProps
-    expect(props.hint).toBe(QUALITY_SERIES_HINT)
-    expect(props.help).toBeUndefined()
+    expect(props.help).toBe(QUALITY_SERIES_HINT)
+    expect(props.hint).toBeUndefined()
     expect(props.more).toBeUndefined()
   })
 

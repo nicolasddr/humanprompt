@@ -5,7 +5,6 @@ import {
   QUALITY_HINT,
   QUALITY_VIEW_RESULT,
   QUALITY_SERIES_HINT,
-  QUALITY_SERIES_NOTE,
   definitionsCoverage,
   formatShare,
   formatWholeShare,
@@ -74,7 +73,6 @@ describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () =
         QUALITY_HEAT_CAPTION,
         QUALITY_VIEW_RESULT,
         QUALITY_SERIES_HINT,
-        QUALITY_SERIES_NOTE,
       ]),
     )
   })
@@ -113,7 +111,6 @@ describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () =
   it('as frases da série não falam de ICR, de faixa nem comparam fases', () => {
     for (const text of [
       QUALITY_SERIES_HINT,
-      QUALITY_SERIES_NOTE,
     ]) {
       expect(text).not.toMatch(/ICR|Krippendorff|concordância|faixa|confiáve|compar/i)
     }
