@@ -19,9 +19,8 @@ vi.mock('next/navigation', () => ({
 
 import ProjectCodebookPage from '@/app/projects/[id]/(tabs)/codebook/page'
 import CodebookVersionPage from '@/app/projects/[id]/(tabs)/codebook/[versionId]/page'
-import { CodebookHistory } from '@/app/projects/[id]/pipeline/codebook-history'
 import type { CodebookVersionSummary } from '@/app/projects/[id]/pipeline/codebook'
-import { VersionBadges } from '@/app/projects/[id]/pipeline/version-history'
+import { VersionBadges, VersionHistory } from '@/app/projects/[id]/pipeline/version-history'
 import { DefinitionList } from '@/app/projects/[id]/pipeline/definition-list'
 import {
   CodebookEditor,
@@ -103,7 +102,9 @@ function sectionHelp(node: unknown, title: string): string {
     .join('')
 }
 
-type HistoryProps = Parameters<typeof CodebookHistory>[0]
+type HistoryProps = Omit<Parameters<typeof VersionHistory>[0], 'versions'> & {
+  versions: CodebookVersionSummary[]
+}
 type DefinitionListProps = Parameters<typeof DefinitionList>[0]
 
 function renderCodebook(id: string) {
@@ -115,9 +116,13 @@ function renderVersion(id: string, versionId: string) {
 }
 
 function historyOf(tree: unknown): HistoryProps {
-  const element = findElement(tree, CodebookHistory)
+  const element = findElement(tree, VersionHistory)
   expect(element).toBeTruthy()
   return element!.props as HistoryProps
+}
+
+function historyTextOf(versions: HistoryProps['versions']): string {
+  return textOf(VersionHistory({ versions, basePath: '', linkLabel: 'Ver codebook' }))
 }
 
 function definitionsOf(tree: unknown): DefinitionListProps {
@@ -172,7 +177,7 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
     expect(props.versions.map((v) => v.versionNumber)).toEqual([3, 2, 1])
   })
 
-  it('cada linha mostra o número e a observação, sem data, autor nem contagens', async () => {
+  it('cada linha mostra só o número, sem observação, data, autor nem contagens', async () => {
     const admin = await newUser('Ana Pesquisadora')
     const project = await newProject(admin)
     await addCodebookVersion(ownerDb, project, admin, {
@@ -184,25 +189,15 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
     const [version] = props.versions
     expect(version.authorName).toBe('Ana Pesquisadora')
 
-    const listText = textOf(CodebookHistory(props))
+    const listText = textOf(VersionHistory(props))
     expect(listText).toContain('Versão 1')
-    expect(listText).toContain('separei “Transacional” de “Navegacional”')
     expect(listText).toContain('Ver codebook')
+    expect(listText).not.toContain('separei “Transacional” de “Navegacional”')
+    expect(listText).not.toContain('(')
     expect(listText).not.toContain('Ana Pesquisadora')
     expect(listText).not.toContain(formatDate(version.createdAt))
     expect(listText).not.toContain('definiç')
     expect(listText).not.toContain('critério')
-  })
-
-  it('a observação vazia não deixa rótulo órfão na linha', async () => {
-    const admin = await newUser('Admin')
-    const project = await newProject(admin)
-    await addCodebookVersion(ownerDb, project, admin, { note: null })
-
-    auth.userId = admin
-    const props = historyOf(await renderCodebook(project))
-    expect(props.versions[0].note).toBeNull()
-    expect(textOf(CodebookHistory(props))).toContain('Versão 1')
   })
 
   it('a versão em uso tem chip e as antigas não mostram chip de congelada', async () => {
@@ -219,14 +214,14 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
 
     expect(current.isLatest).toBe(true)
     expect(current.isOpen).toBe(true)
-    const currentText = textOf(CodebookHistory({ projectId: project, versions: [current] }))
+    const currentText = historyTextOf([current])
     expect(currentText).toContain('Em uso')
     expect(currentText).toContain('Em aberto')
     expect(currentText).not.toContain('Vigente')
 
     expect(old.isLatest).toBe(false)
     expect(old.isOpen).toBe(false)
-    const oldText = textOf(CodebookHistory({ projectId: project, versions: [old] }))
+    const oldText = historyTextOf([old])
     expect(oldText).not.toContain('Congelada')
     expect(oldText).not.toContain('Em uso')
     expect(oldText).not.toContain('Em aberto')
@@ -243,7 +238,7 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
     const [version] = historyOf(await renderCodebook(project)).versions
     expect(version.isLatest).toBe(true)
     expect(version.isOpen).toBe(false)
-    const text = textOf(CodebookHistory({ projectId: project, versions: [version] }))
+    const text = historyTextOf([version])
     expect(text).toContain('Em uso')
     expect(text).not.toContain('Congelada')
     expect(text).not.toContain('Em aberto')
@@ -257,7 +252,7 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
 
     auth.userId = admin
     const emptyTree = await renderCodebook(empty)
-    expect(findElement(emptyTree, CodebookHistory)).toBeNull()
+    expect(findElement(emptyTree, VersionHistory)).toBeNull()
     expect(sectionTitles(emptyTree)).toEqual(['Definições'])
 
     const versionedTree = await renderCodebook(versioned)
@@ -404,7 +399,7 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
 
     auth.userId = admin
     const list = await renderCodebook(project)
-    expectNoEditing(CodebookHistory(historyOf(list)))
+    expectNoEditing(VersionHistory(historyOf(list)))
 
     const detail = await renderVersion(project, versionId)
     expectNoEditing(detail)

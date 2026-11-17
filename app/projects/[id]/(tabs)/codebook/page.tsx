@@ -4,7 +4,7 @@ import { transaction } from '@/lib/db'
 import { loadPipelineAccess, requirePipelineAdmin } from '../../pipeline/access'
 import { loadCodebook, listCodebookVersions } from '../../pipeline/codebook'
 import { CodebookEditor } from '../../pipeline/codebook-editor'
-import { CodebookHistory } from '../../pipeline/codebook-history'
+import { VersionHistory } from '../../pipeline/version-history'
 import { PHASE_2 } from '../../pipeline/preconditions'
 import { loadOpenRound } from '../rounds/rounds'
 import { defaultDefinitionType } from '@/app/projects/definition-types'
@@ -56,8 +56,15 @@ export default async function ProjectCodebookPage({
       </Section>
 
       {versions.length > 0 ? (
-        <Section title="Histórico de Versões - Codebook">
-          <CodebookHistory projectId={project.id} versions={versions} />
+        <Section
+          title="Histórico de Versões - Codebook"
+          hint="Da mais recente para a mais antiga."
+        >
+          <VersionHistory
+            versions={versions}
+            basePath={`/projects/${project.id}/codebook`}
+            linkLabel="Ver codebook"
+          />
         </Section>
       ) : null}
     </>

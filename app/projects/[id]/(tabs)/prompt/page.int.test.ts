@@ -19,9 +19,8 @@ vi.mock('next/navigation', () => ({
 
 import ProjectPromptPage from '@/app/projects/[id]/(tabs)/prompt/page'
 import PromptVersionPage from '@/app/projects/[id]/(tabs)/prompt/[versionId]/page'
-import { PromptHistory } from '@/app/projects/[id]/pipeline/prompt-history'
 import { PromptMetadataList } from '@/app/projects/[id]/pipeline/prompt-metadata'
-import { VersionBadges } from '@/app/projects/[id]/pipeline/version-history'
+import { VersionBadges, VersionHistory } from '@/app/projects/[id]/pipeline/version-history'
 import {
   PromptEditor,
   PromptForm,
@@ -82,7 +81,9 @@ function textOf(node: unknown): string {
   return collectText(node).replace(/\s+/g, ' ').trim()
 }
 
-type HistoryProps = Parameters<typeof PromptHistory>[0]
+type HistoryProps = Omit<Parameters<typeof VersionHistory>[0], 'versions'> & {
+  versions: PromptVersionSummary[]
+}
 
 function renderPrompt(id: string) {
   return ProjectPromptPage({ params: Promise.resolve({ id }) })
@@ -99,9 +100,13 @@ function metadataTextOf(tree: unknown): string {
 }
 
 function historyOf(tree: unknown): HistoryProps {
-  const element = findElement(tree, PromptHistory)
+  const element = findElement(tree, VersionHistory)
   expect(element).toBeTruthy()
   return element!.props as HistoryProps
+}
+
+function historyTextOf(versions: HistoryProps['versions']): string {
+  return textOf(VersionHistory({ versions, basePath: '', linkLabel: 'Ver prompt' }))
 }
 
 function expectNoEditing(tree: unknown) {
@@ -165,7 +170,7 @@ describe('app/projects/[id]/prompt — a tela do prompt', () => {
     const [version] = props.versions
     expect(version.authorName).toBe('Ana Pesquisadora')
 
-    const listText = textOf(PromptHistory(props))
+    const listText = textOf(VersionHistory(props))
     expect(listText).toContain('Versão 1 (instrução direta)')
     expect(listText).toContain('Ver prompt')
     expect(listText).not.toContain('Ver texto')
@@ -197,7 +202,7 @@ describe('app/projects/[id]/prompt — a tela do prompt', () => {
     auth.userId = admin
     expect(findElement(await renderVersion(project, versionId), PromptMetadataList)).toBeNull()
     expect(
-      findElement(PromptHistory(historyOf(await renderPrompt(project))), PromptMetadataList),
+      findElement(VersionHistory(historyOf(await renderPrompt(project))), PromptMetadataList),
     ).toBeNull()
   })
 
@@ -215,14 +220,14 @@ describe('app/projects/[id]/prompt — a tela do prompt', () => {
 
     expect(current.isLatest).toBe(true)
     expect(current.isOpen).toBe(true)
-    const currentText = textOf(PromptHistory({ projectId: project, versions: [current] }))
+    const currentText = historyTextOf([current])
     expect(currentText).toContain('Em uso')
     expect(currentText).toContain('Em aberto')
     expect(currentText).not.toContain('Vigente')
 
     expect(old.isLatest).toBe(false)
     expect(old.isOpen).toBe(false)
-    const oldText = textOf(PromptHistory({ projectId: project, versions: [old] }))
+    const oldText = historyTextOf([old])
     expect(oldText).not.toContain('Congelada')
     expect(oldText).not.toContain('Em uso')
     expect(oldText).not.toContain('Em aberto')
@@ -237,7 +242,7 @@ describe('app/projects/[id]/prompt — a tela do prompt', () => {
     const [version] = historyOf(await renderPrompt(project)).versions
     expect(version.isLatest).toBe(true)
     expect(version.isOpen).toBe(false)
-    const text = textOf(PromptHistory({ projectId: project, versions: [version] }))
+    const text = historyTextOf([version])
     expect(text).toContain('Em uso')
     expect(text).not.toContain('Congelada')
     expect(text).not.toContain('Em aberto')
@@ -251,7 +256,7 @@ describe('app/projects/[id]/prompt — a tela do prompt', () => {
 
     auth.userId = admin
     const emptyTree = await renderPrompt(empty)
-    expect(findElement(emptyTree, PromptHistory)).toBeNull()
+    expect(findElement(emptyTree, VersionHistory)).toBeNull()
     const emptyEditor = findElement(emptyTree, PromptEditor)!
       .props as Parameters<typeof PromptEditor>[0]
     expect(emptyEditor.historyAnchor).toBeUndefined()
@@ -349,7 +354,7 @@ describe('app/projects/[id]/prompt — a tela do prompt', () => {
 
     auth.userId = admin
     const list = await renderPrompt(project)
-    expectNoEditing(PromptHistory(historyOf(list)))
+    expectNoEditing(VersionHistory(historyOf(list)))
 
     expectNoEditing(await renderVersion(project, versionId))
   })

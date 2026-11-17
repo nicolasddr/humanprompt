@@ -5,7 +5,7 @@ import { loadPipelineAccess, requirePipelineAdmin } from '../../pipeline/access'
 import { loadPrompt, listPromptVersions } from '../../pipeline/prompt'
 import { PromptEditor } from '../../pipeline/prompt-editor'
 import { PromptMetadataEditor } from '../../pipeline/prompt-metadata-editor'
-import { PromptHistory } from '../../pipeline/prompt-history'
+import { VersionHistory } from '../../pipeline/version-history'
 import { PromptTest } from '../../pipeline/prompt-test'
 import { loadItems } from '../../pipeline/items'
 import { loadCodebook } from '../../pipeline/codebook'
@@ -102,7 +102,11 @@ export default async function ProjectPromptPage({
             title="Histórico de Versões - Prompt"
             hint="Da mais recente para a mais antiga."
           >
-            <PromptHistory projectId={project.id} versions={versions} />
+            <VersionHistory
+              versions={versions}
+              basePath={`/projects/${project.id}/prompt`}
+              linkLabel="Ver prompt"
+            />
           </Section>
         </div>
       ) : null}
