@@ -38,10 +38,7 @@ import { QualityLine } from '@/app/projects/[id]/(tabs)/rounds/quality-line'
 import { formatShare } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
 import type { Quality } from '@/app/projects/[id]/(tabs)/rounds/quality'
 import { scaleLabel } from '@/app/projects/[id]/(tabs)/evaluate/scale'
-import {
-  ReferenceComparisonPanel,
-  ReferenceRoundLine,
-} from '@/app/projects/[id]/(tabs)/rounds/reference-comparison-panel'
+import { ReferenceComparisonPanel } from '@/app/projects/[id]/(tabs)/rounds/reference-comparison-panel'
 import {
   COMPARISON_AGREEMENT_ROW,
   COMPARISON_EMPTY,
@@ -51,7 +48,6 @@ import {
   comparisonAgreementRow,
   noReferenceMessage,
   referenceComparisonHint,
-  referenceLine,
 } from '@/app/projects/[id]/(tabs)/rounds/reference-comparison-labels'
 import {
   AGREEMENT_BANDS,
@@ -69,8 +65,6 @@ import {
   phase4BelowBandGuidance,
   phase4NotCalculableGuidance,
 } from '@/app/projects/[id]/(tabs)/rounds/reading-guidance-labels'
-import { RoundChangeChips } from '@/app/projects/[id]/(tabs)/rounds/round-changes-note'
-import { entersPhase4Note } from '@/app/projects/[id]/(tabs)/rounds/round-changes-labels'
 import { PARTICIPATED_BEFORE } from '@/app/projects/[id]/(tabs)/rounds/participation-labels'
 import { Section } from '@/app/components/ui/section'
 import { loadCodebookVersion } from '@/app/projects/[id]/pipeline/codebook'
@@ -180,9 +174,7 @@ type ListProps = Parameters<typeof RoundList>[0]
 type NotesProps = Parameters<typeof AgreementNotes>[0]
 type CriterionTableProps = Parameters<typeof CriterionAgreementTable>[0]
 type ComparisonProps = Parameters<typeof ReferenceComparisonPanel>[0]
-type LineProps = Parameters<typeof ReferenceRoundLine>[0]
 type GuidanceProps = Parameters<typeof ReadingGuidanceNote>[0]
-type ChangesProps = Parameters<typeof RoundChangeChips>[0]
 type CodebookShape = Parameters<typeof addCodebookVersion>[3]
 
 function render(id: string) {
@@ -246,19 +238,8 @@ function cardsOf(list: ListProps): ReactElement[] {
   return findAll(RoundList(list), 'li')
 }
 
-function referenceLineOf(card: ReactElement): ReactElement | null {
-  return findElement(card, ReferenceRoundLine)
-}
-
-function changesOf(card: ReactElement): ChangesProps | null {
-  const element = findElement(card, RoundChangeChips)
-  return element ? (element.props as ChangesProps) : null
-}
-
-function changesTextOf(card: ReactElement): string {
-  const props = changesOf(card)
-  expect(props).toBeTruthy()
-  return markupTextOf(createElement(RoundChangeChips, props!))
+function listTextOf(tree: unknown): string {
+  return markupTextOf(createElement(RoundList, listOf(tree)))
 }
 
 function tableOf(tree: unknown): string[][] {
@@ -520,25 +501,22 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     expect(heading[2]).toBe('Rodada 2 Aberta Fase 4')
   })
 
-  it('os dois lados trazem ICR e Qualidade com os mesmos números da lista de rodadas', async () => {
+  it('os dois lados trazem o ICR e a Qualidade de cada rodada', async () => {
     const admin = await newUser('Admin')
     const scene = await basicScene(admin)
 
     auth.userId = admin
     const tree = await render(scene.project)
-    const list = listOf(tree)
     const { comparison } = comparisonOf(tree)
     expect(comparison.kind).toBe('compared')
     if (comparison.kind !== 'compared') return
 
-    const reference = scene.rounds.get(1)!
-    const round = scene.rounds.get(2)!
-    expect(comparison.reference.agreement).toBe(list.agreement.get(reference))
-    expect(comparison.reference.quality).toBe(list.quality.get(reference))
-    expect(comparison.round.agreement).toBe(list.agreement.get(round))
-    expect(comparison.round.quality).toBe(list.quality.get(round))
-    const alphaOf = (roundId: string, name: string) => {
-      const row = list.agreement.get(roundId)!.find(({ column }) => column.name === name)
+    const reference = comparison.reference
+    const round = comparison.round
+    expect(reference.roundNumber).toBe(1)
+    expect(round.roundNumber).toBe(2)
+    const alphaOf = (side: typeof reference, name: string) => {
+      const row = side.agreement.find(({ column }) => column.name === name)
       const cell = row?.cell
       return cell?.state === 'calculated' && cell.agreement.calculable
         ? formatAlpha(cell.agreement.alpha)
@@ -555,8 +533,8 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     }
     expect(rowOf(tree, COMPARISON_AGREEMENT_ROW)).toBeUndefined()
 
-    const referenceLevels = levelCells(list.quality.get(reference)?.all)
-    const roundLevels = levelCells(list.quality.get(round)?.all)
+    const referenceLevels = levelCells(reference.quality?.all)
+    const roundLevels = levelCells(round.quality?.all)
     expect(referenceLevels).toHaveLength(3)
     expect(roundLevels).toHaveLength(3)
     for (const [index, value] of (['high', 'medium', 'low'] as const).entries()) {
@@ -621,7 +599,7 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     }
   })
 
-  it('depois de um retorno e de um novo avanço, cada rodada da Fase 4 nomeia a sua referência', async () => {
+  it('depois de um retorno e de um novo avanço, o bloco nomeia a referência da passagem, e a lista não traz referência', async () => {
     const admin = await newUser('Admin')
     const scene = await phase4Scene(admin, [
       { roundNumber: 1, phase: PHASE_3, status: 'closed' },
@@ -636,69 +614,13 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     const { comparison } = comparisonOf(tree)
     expect(comparison.kind === 'compared' && comparison.reference.roundNumber).toBe(3)
 
-    const list = listOf(tree)
-    const cards = cardsOf(list)
-    const lines = cards.map((card) => {
-      const line = referenceLineOf(card)
-      return line ? markupTextOf(line) : null
-    })
-
-    expect(lines[3]).toBeNull()
-    expect(lines[2]).toMatch(/^Referência: rodada 1 · ICR Clareza -?\d,\d{3} · Profundidade /)
-    expect(lines[1]).toBeNull()
-    expect(lines[0]).toMatch(/^Referência: rodada 3 · ICR Clareza -?\d,\d{3} · Profundidade /)
-    expect(lines[2]).not.toContain('Codebook')
-    expect(lines[2]).not.toContain('Prompt')
-
-    const { reference } = referenceLineOf(cards[2])!.props as LineProps
-    expect(reference.agreement).toBe(list.agreement.get(scene.rounds.get(1)!))
-    expect(reference.quality).toBe(list.quality.get(scene.rounds.get(1)!))
-    expect(lines[2]).toBe(referenceLine(reference))
+    const text = listTextOf(tree)
+    expect(text).not.toContain('Referência')
+    expect(text).not.toContain('Primeira rodada')
+    expect(text).not.toContain('ICR')
   })
 
-  it('no cartão da rodada da Fase 4, a frase nomeia a mesma rodada de referência do bloco de comparação', async () => {
-    const admin = await newUser('Admin')
-    const scene = await basicScene(admin)
-
-    auth.userId = admin
-    const tree = await render(scene.project)
-
-    const { comparison } = comparisonOf(tree)
-    expect(comparison.kind).toBe('compared')
-    const reference = comparison.kind === 'compared' ? comparison.reference.roundNumber : null
-    expect(reference).toBe(1)
-
-    const cards = cardsOf(listOf(tree))
-    const changes = changesOf(cards[0])
-    expect(changes).toBeTruthy()
-    expect(changes!.changes?.entersPhase4).toBe(true)
-    expect(changesTextOf(cards[0])).toContain(entersPhase4Note(reference!))
-  })
-
-  it('depois de um retorno e de um novo avanço, a frase nomeia a referência da passagem', async () => {
-    const admin = await newUser('Admin')
-    const scene = await phase4Scene(admin, [
-      { roundNumber: 1, phase: PHASE_3, status: 'closed' },
-      { roundNumber: 2, phase: PHASE_4, status: 'closed' },
-      { roundNumber: 3, phase: PHASE_3, status: 'closed' },
-      { roundNumber: 4, phase: PHASE_4, status: 'open' },
-    ])
-
-    auth.userId = admin
-    const tree = await render(scene.project)
-
-    const { comparison } = comparisonOf(tree)
-    expect(comparison.kind === 'compared' && comparison.reference.roundNumber).toBe(3)
-
-    const cards = cardsOf(listOf(tree))
-    expect(changesTextOf(cards[2])).toContain(entersPhase4Note(1))
-    expect(changesOf(cards[1])!.changes?.entersPhase4).toBe(false)
-    expect(changesTextOf(cards[1])).not.toMatch(/Primeira rodada da Fase 4/)
-    expect(changesTextOf(cards[0])).toContain(entersPhase4Note(3))
-    expect(changesTextOf(cards[0])).not.toContain(entersPhase4Note(1))
-  })
-
-  it('numa rodada em foco da Fase 3, o bloco não aparece, e nenhum cartão das Fases 2 e 3 traz a referência', async () => {
+  it('numa rodada em foco da Fase 3, o bloco não aparece, e a lista não traz referência', async () => {
     const admin = await newUser('Admin')
     const scene = await phase4Scene(admin, [
       { roundNumber: 1, phase: PHASE_2, status: 'closed' },
@@ -713,11 +635,8 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     expect(findElement(tree, ReferenceComparisonPanel)).toBeNull()
     expect(allTextOf(tree)).not.toContain(REFERENCE_COMPARISON_TITLE)
 
-    const cards = cardsOf(listOf(tree))
-    expect(referenceLineOf(cards[3])).toBeNull()
-    expect(referenceLineOf(cards[2])).toBeNull()
-    expect(referenceLineOf(cards[1])).not.toBeNull()
-    expect(referenceLineOf(cards[0])).toBeNull()
+    expect(cardsOf(listOf(tree))).toHaveLength(4)
+    expect(listTextOf(tree)).not.toContain('Referência')
   })
 
   it('numa rodada da Fase 4 sem rodada de referência, o bloco diz que não há com o que comparar', async () => {
@@ -736,11 +655,10 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     const section = findSection(tree, ReferenceComparisonPanel)
     expect((section!.props as { title: ReactNode }).title).toBe(REFERENCE_COMPARISON_TITLE)
 
-    const cards = cardsOf(listOf(tree))
-    expect(referenceLineOf(cards[0])).toBeNull()
+    expect(listTextOf(tree)).not.toContain('Referência')
   })
 
-  it('o bloco e a linha da referência não usam palavra, seta, diferença nem cor de juízo', async () => {
+  it('o bloco da referência não usa palavra, seta, diferença nem cor de juízo', async () => {
     const admin = await newUser('Admin')
     const scene = await basicScene(admin)
     await addOutlier(ownerDb, scene.rounds.get(1)!, scene.carla, admin)
@@ -750,10 +668,6 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     const tree = await render(scene.project)
 
     expectNoJudgment(comparisonElementOf(tree))
-
-    const line = referenceLineOf(cardsOf(listOf(tree))[0])
-    expect(line).toBeTruthy()
-    expectNoJudgment(line!)
   })
 
   it('numa rodada da Fase 4 abaixo da faixa, a orientação é a da Fase 4', async () => {
@@ -880,7 +794,6 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     const text = allTextOf(tree).toLowerCase()
 
     expect(findElement(tree, ReferenceComparisonPanel)).toBeNull()
-    expect(findElement(tree, ReferenceRoundLine)).toBeNull()
     expect(findElement(tree, RoundList)).toBeNull()
     expect(findElement(tree, ReadingGuidanceNote)).toBeNull()
     for (const word of ['rodada de referência', 'concordância', 'confiabilidade', 'qualidade']) {
@@ -890,8 +803,6 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     for (const guidance of PHASE_4_GUIDANCE_TEXTS) {
       expect(text).not.toContain(guidance.toLowerCase())
     }
-    expect(findElement(tree, RoundChangeChips)).toBeNull()
-    expect(text).not.toContain(entersPhase4Note(1).toLowerCase())
     expect(text).not.toContain('primeira rodada da fase 4')
   })
 

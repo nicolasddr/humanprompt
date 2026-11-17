@@ -218,12 +218,7 @@ export default async function ProjectRoundsPage({
       className="scroll-mt-6"
       title="Rodadas do projeto"
     >
-      <RoundList
-        projectId={project.id}
-        rounds={rounds}
-        agreement={agreement}
-        quality={quality}
-      />
+      <RoundList projectId={project.id} rounds={rounds} />
     </Section>
   )
 

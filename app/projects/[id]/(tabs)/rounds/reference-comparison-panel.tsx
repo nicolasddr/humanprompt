@@ -9,7 +9,6 @@ import {
   comparedVersions,
   comparisonRows,
   noReferenceMessage,
-  referenceLine,
   type ComparisonCell,
 } from './reference-comparison-labels'
 import { isOpen } from './round-status'
@@ -104,13 +103,5 @@ export function ReferenceComparisonPanel({
         </table>
       </div>
     </div>
-  )
-}
-
-export function ReferenceRoundLine({ reference }: { reference: ComparedRound }) {
-  return (
-    <p className="m-0 mt-2 border-t border-line pt-2 text-[13px] text-muted tabular-nums">
-      {referenceLine(reference)}
-    </p>
   )
 }

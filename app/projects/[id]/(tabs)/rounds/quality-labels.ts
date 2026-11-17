@@ -56,10 +56,6 @@ export function levelsText(levels: QualityLevel[]): string {
   return levels.map(levelText).join(' · ')
 }
 
-export function levelsShareText(levels: QualityLevel[]): string {
-  return levels.map((level) => `${scaleLabel(level.value)} ${formatShare(level.share)}`).join(' · ')
-}
-
 export function wholeLevelText(level: QualityLevel): string {
   return `${scaleLabel(level.value)} ${formatWholeShare(level.share)} (${level.count})`
 }

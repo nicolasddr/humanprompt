@@ -39,7 +39,6 @@ import { qualityPair } from '@/app/projects/[id]/(tabs)/rounds/quality'
 import { PageTitle } from '@/app/components/ui/shell'
 import { InfoTooltip } from '@/app/components/ui/tooltip'
 import { LearnMore } from '@/app/components/ui/learn-more'
-import { RoundChangeChips } from '@/app/projects/[id]/(tabs)/rounds/round-changes-note'
 import { ownerDb } from '@/lib/db'
 import {
   createUser,
@@ -290,7 +289,6 @@ describe('app/projects/[id]/rounds/[roundId]/agreement — a concordância de um
       expect((tooltip.props as { text: string }).text).toMatch(
         new RegExp(`^Fase ${phase} · Codebook v1 · Prompt v1\\nFechada em \\d{2}/\\d{2}/\\d{4}$`),
       )
-      expect(findAll(tree, RoundChangeChips)).toHaveLength(0)
       expect(findAll(tree, LearnMore)).toHaveLength(0)
     }
   })

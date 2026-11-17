@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import {
-  COMPARISON_AGREEMENT_ROW,
   COMPARISON_EMPTY,
   COMPARISON_TOTAL_ROW,
   REFERENCE_COMPARISON_HELP,
@@ -9,7 +8,6 @@ import {
   comparedVersions,
   comparisonAgreementRow,
   comparisonRows,
-  referenceLine,
   type ComparisonRow,
 } from '@/app/projects/[id]/(tabs)/rounds/reference-comparison-labels'
 import type { ComparedRound } from '@/app/projects/[id]/(tabs)/rounds/reference-comparison'
@@ -248,19 +246,6 @@ describe('app/projects/[id]/rounds/reference-comparison-labels — ICR por crit�
     ])
   })
 
-  it('a linha da referência na lista traz o ICR de cada critério', () => {
-    const reference = side(4, PHASE_3, {
-      agreement: [
-        criterion('Relevance', calculable(-0.031)),
-        criterion('Diversity', NOT_CALCULABLE, null, 'per_response'),
-      ],
-    })
-
-    expect(referenceLine(reference)).toBe(
-      `Referência: rodada 4 · ${COMPARISON_AGREEMENT_ROW} Relevance -0,031 · ` +
-        `Diversity ${NOT_CALCULABLE_LABEL} · Alto 62,5% · Médio 25% · Baixo 12,5%`,
-    )
-  })
 })
 
 describe('app/projects/[id]/rounds/reference-comparison-labels — cabeçalho', () => {

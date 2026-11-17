@@ -13,7 +13,6 @@ import {
   QUALITY_UNRATED,
   QUALITY_UNRATED_WITHOUT_OUTLIERS,
   formatShare,
-  levelsShareText,
 } from './quality-labels'
 import type { ComparedRound } from './reference-comparison'
 
@@ -184,24 +183,6 @@ export function comparisonRows(
   }
 
   return rows
-}
-
-function referenceQualityText(quality: Quality | null | undefined): string | null {
-  if (!quality) return null
-  return quality.rated ? levelsShareText(quality.levels) : QUALITY_UNRATED
-}
-
-export function referenceLine(reference: ComparedRound): string {
-  const agreement = reference.agreement
-    .map(({ column, cell }) => `${column.name} ${agreementValue(cell).text}`)
-    .join(' · ')
-  return [
-    `Referência: rodada ${reference.roundNumber}`,
-    agreement ? `${COMPARISON_AGREEMENT_ROW} ${agreement}` : null,
-    referenceQualityText(reference.quality?.all),
-  ]
-    .filter((part) => part !== null)
-    .join(' · ')
 }
 
 export function noReferenceMessage(roundNumber: number): string {

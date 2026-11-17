@@ -58,10 +58,7 @@ import { loadCodebookVersion } from '@/app/projects/[id]/pipeline/codebook'
 import { PER_RESPONSE_LABEL, resolveCells } from '@/app/projects/[id]/pipeline/criteria'
 import { PHASE_2, PHASE_3, PHASE_4 } from '@/app/projects/[id]/pipeline/preconditions'
 import { roundInputSummary } from '@/app/projects/[id]/(tabs)/rounds/preconditions'
-import {
-  RoundChangeChips,
-  RoundChangeNotice,
-} from '@/app/projects/[id]/(tabs)/rounds/round-changes-note'
+import { RoundChangeNotice } from '@/app/projects/[id]/(tabs)/rounds/round-changes-note'
 import { PageTitle } from '@/app/components/ui/shell'
 import { InfoTooltip } from '@/app/components/ui/tooltip'
 import { Section } from '@/app/components/ui/section'
@@ -70,8 +67,6 @@ import { formatDate } from '@/app/notifications/labels'
 import {
   CODEBOOK_AND_PROMPT_NOTICE,
   CODEBOOK_AND_PROMPT_WITH_INPUT_NOTICE,
-  ENTERS_PHASE_3_NOTE,
-  entersPhase4Note,
 } from '@/app/projects/[id]/(tabs)/rounds/round-changes-labels'
 import {
   ownerDb,
@@ -982,7 +977,6 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     expect(text).not.toContain('Em relação à rodada')
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_WITH_INPUT_NOTICE)
-    expect(text).not.toContain(ENTERS_PHASE_3_NOTE)
   })
 
   it('com codebook e prompt mudados juntos, o Administrador lê o título, o ⓘ com as versões e o aviso', async () => {
@@ -1002,7 +996,6 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     expect(headerDetailsOf(tree)).toMatch(new RegExp(`^Fase ${PHASE_2} · Codebook v2 · Prompt v2\\n`))
     expect(text).not.toContain('→')
     expect(text).toContain(CODEBOOK_AND_PROMPT_NOTICE)
-    expect(text).not.toContain(ENTERS_PHASE_3_NOTE)
   })
 
   it('com só o codebook mudado, não há aviso', async () => {
@@ -1021,7 +1014,6 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     expect(text).not.toContain('→')
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_WITH_INPUT_NOTICE)
-    expect(text).not.toContain(ENTERS_PHASE_3_NOTE)
   })
 
   it('na primeira rodada da Fase 3, com as mesmas versões, o cabeçalho não traz a frase da forma de montar a entrada', async () => {
@@ -1037,7 +1029,6 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     const text = headerTextOf(tree)
 
     expect(headerDetailsOf(tree)).toMatch(new RegExp(`^Fase ${PHASE_3} · Codebook v1 · Prompt v1\\n`))
-    expect(text).not.toContain(ENTERS_PHASE_3_NOTE)
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_WITH_INPUT_NOTICE)
   })
@@ -1056,7 +1047,6 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
 
     expect(text).toContain(CODEBOOK_AND_PROMPT_WITH_INPUT_NOTICE)
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
-    expect(text).not.toContain(ENTERS_PHASE_3_NOTE)
   })
 
   it('na primeira rodada da Fase 4, o cabeçalho tem só o título e o ⓘ, sem a frase da rodada de referência nem "Saiba mais"', async () => {
@@ -1078,10 +1068,8 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     expect(tooltips).toEqual([headerDetailsOf(tree)])
     expect(headerDetailsOf(tree)).toMatch(new RegExp(`^Fase ${PHASE_4} · Codebook v1 · Prompt v1\\n`))
     expect(findElement(header, LearnMore)).toBeNull()
-    expect(findElement(header, RoundChangeChips)).toBeNull()
     const text = headerTextOf(tree)
     expect(text).not.toContain('Saiba mais')
-    expect(text).not.toContain(entersPhase4Note(1))
     expect(text).not.toContain(roundInputSummary(PHASE_4))
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_WITH_INPUT_NOTICE)
@@ -1131,7 +1119,6 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     expect(text).toContain('Ana Avaliadora')
     expect(findElement(tree, PageTitle)).toBeNull()
     expect(text).not.toContain('Em relação à rodada')
-    expect(text).not.toContain(entersPhase4Note(1))
     expect(text).not.toContain('rodada de referência')
   })
 
@@ -1147,7 +1134,6 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     expect(headerDetailsOf(tree)).toMatch(new RegExp(`^Fase ${PHASE_2} · Codebook v1 · Prompt v1\\n`))
     expect(text).not.toContain('→')
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
-    expect(text).not.toContain(ENTERS_PHASE_3_NOTE)
   })
 
   it('o Administrador lê a data de fechamento no ⓘ do título, sem o hint da versão', async () => {
