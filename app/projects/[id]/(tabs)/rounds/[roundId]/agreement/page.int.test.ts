@@ -34,7 +34,7 @@ import { loadCodebookVersion } from '@/app/projects/[id]/pipeline/codebook'
 import { resolveCells } from '@/app/projects/[id]/pipeline/criteria'
 import { PHASE_2, PHASE_3 } from '@/app/projects/[id]/pipeline/preconditions'
 import { QUALITY_SECTION_ID } from '@/app/projects/[id]/(tabs)/rounds/reading-guidance'
-import { QualityPanel } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
+import { QualityLine } from '@/app/projects/[id]/(tabs)/rounds/quality-line'
 import { qualityPair } from '@/app/projects/[id]/(tabs)/rounds/quality'
 import { ownerDb } from '@/lib/db'
 import {
@@ -253,8 +253,8 @@ describe('app/projects/[id]/rounds/[roundId]/agreement — a concordância de um
 
     const [earlier] = qualitySectionsOf(await render(project, rounds[0]))
     expect(titleOf(earlier)).toBe('Qualidade na rodada 1, fechada')
-    const [panel] = findAll(earlier, QualityPanel)
-    expect((panel.props as Parameters<typeof QualityPanel>[0]).pair).toEqual(
+    const [panel] = findAll(earlier, QualityLine)
+    expect((panel.props as Parameters<typeof QualityLine>[0]).pair).toEqual(
       qualityPair(await loadRoundObservations(rounds[0]), new Set()),
     )
   })

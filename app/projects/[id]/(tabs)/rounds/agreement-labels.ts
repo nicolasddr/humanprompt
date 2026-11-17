@@ -95,10 +95,6 @@ export function cellNotApplicableTitle(
   return CELL_NOT_APPLICABLE_TITLE
 }
 
-export function matrixVersionLabel(codebookVersionNumber: number): string {
-  return `Codebook v${codebookVersionNumber} da rodada`
-}
-
 export function matrixVersionNote(codebookVersionNumber: number): string {
   return (
     `A matriz é da versão de codebook que a rodada fixou, Codebook v${codebookVersionNumber}, ` +

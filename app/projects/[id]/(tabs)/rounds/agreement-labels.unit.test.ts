@@ -29,7 +29,6 @@ import {
   concentrationWarning,
   formatAlpha,
   matrixPerResponseNote,
-  matrixVersionLabel,
   matrixVersionNote,
   notApplicableNote,
   criterionTabTitle,
@@ -252,8 +251,7 @@ describe('app/projects/[id]/rounds/agreement-labels — o coeficiente na tela', 
     expect(labels).not.toHaveProperty('cellEqualLabel')
   })
 
-  it('a versão da matriz tem rótulo curto e frase inteira, as duas com o número da rodada', () => {
-    expect(matrixVersionLabel(4)).toBe('Codebook v4 da rodada')
+  it('a versão da matriz tem frase inteira com o número da rodada', () => {
     expect(matrixVersionNote(4)).toBe(
       'A matriz é da versão de codebook que a rodada fixou, Codebook v4, e não da ' +
         'versão vigente do projeto.',

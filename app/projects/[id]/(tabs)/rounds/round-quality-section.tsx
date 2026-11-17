@@ -1,14 +1,9 @@
 import { Section } from '@/app/components/ui/section'
 import type { CodebookCriterion, CodebookDefinition } from '../../pipeline/codebook'
 import type { RoundObservation } from './agreement'
-import { byDefinitionSummary } from './agreement-labels'
-import { matrixColumns } from './agreement-matrix'
-import { ByDefinition } from './by-definition'
-import { CriterionQualityTable } from './criterion-quality-table'
 import { hasQuality, qualityPair } from './quality'
-import { QUALITY_HINT } from './quality-labels'
-import { QualityMatrixNotes, QualityMatrixTable } from './quality-matrix-table'
-import { QualityPanel } from './quality-panel'
+import { QualityHeatmap } from './quality-heatmap'
+import { QualityLine } from './quality-line'
 import { QUALITY_SECTION_ID } from './reading-guidance'
 import type { AgreementRound } from './round-agreement-section'
 
@@ -33,52 +28,17 @@ export function roundQualitySection({
 }) {
   if (!hasQuality(round.phase)) return null
 
-  const matrix = (
-    <QualityMatrixTable
-      definitions={definitions}
-      criteria={criteria}
-      observations={observations}
-      excluded={excluded}
-      codebookVersionNumber={round.codebookVersionNumber}
-    />
-  )
-
   return (
-    <Section
-      id={QUALITY_SECTION_ID}
-      className="scroll-mt-6"
-      title={qualitySectionTitle(round)}
-      hint={QUALITY_HINT}
-    >
-      <div className="flex flex-col gap-4">
-        <QualityPanel pair={qualityPair(observations, excluded)} />
-
-        {definitions.length > 0 && criteria.length > 0 ? (
-          <>
-            <CriterionQualityTable
-              definitions={definitions}
-              criteria={criteria}
-              observations={observations}
-              excluded={excluded}
-            />
-
-            <ByDefinition
-              summary={byDefinitionSummary(
-                definitions.length,
-                matrixColumns(definitions, criteria).length,
-              )}
-            >
-              {matrix}
-            </ByDefinition>
-
-            <QualityMatrixNotes
-              criteria={criteria}
-              codebookVersionNumber={round.codebookVersionNumber}
-            />
-          </>
-        ) : (
-          matrix
-        )}
+    <Section id={QUALITY_SECTION_ID} className="scroll-mt-6" title={qualitySectionTitle(round)}>
+      <div className="flex flex-col gap-5">
+        <QualityLine pair={qualityPair(observations, excluded)} />
+        <QualityHeatmap
+          definitions={definitions}
+          criteria={criteria}
+          observations={observations}
+          excluded={excluded}
+          codebookVersionNumber={round.codebookVersionNumber}
+        />
       </div>
     </Section>
   )

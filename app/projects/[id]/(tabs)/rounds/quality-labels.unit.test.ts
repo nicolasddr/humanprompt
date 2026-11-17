@@ -1,24 +1,27 @@
 import { describe, it, expect } from 'vitest'
 import * as labels from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
 import {
-  QUALITY_CRITERION_LEGEND,
+  QUALITY_ALL_DEFINITIONS,
+  QUALITY_HEAT_CAPTION,
+  QUALITY_HEAT_LEGEND,
+  QUALITY_HEAT_OUTLIERS_NOTE,
   QUALITY_HINT,
-  QUALITY_MATRIX_LEGEND,
   QUALITY_SERIES_HINT,
   QUALITY_SERIES_NOTE,
+  definitionsCoverage,
   formatShare,
-  levelShares,
+  formatWholeShare,
+  levelShareText,
   levelText,
   levelsText,
   qualityTotal,
+  wholeLevelsText,
 } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
 import {
   AGREEMENT_ALL_LABEL,
   AGREEMENT_WITHOUT_OUTLIERS_LABEL,
-  CELL_NOT_APPLICABLE,
   CELL_NOT_APPLICABLE_TITLE,
   CELL_UNRATED_LABEL,
-  BY_DEFINITION_LABEL,
 } from '@/app/projects/[id]/(tabs)/rounds/agreement-labels'
 
 const JUDGEMENT_WORDS = [
@@ -49,6 +52,13 @@ describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () =
     expect(formatShare(1 / 3)).toBe('33,3%')
   })
 
+  it('na seção da rodada, a porcentagem sai inteira', () => {
+    expect(formatWholeShare(0.625)).toBe('63%')
+    expect(formatWholeShare(0.77875)).toBe('78%')
+    expect(formatWholeShare(0)).toBe('0%')
+    expect(formatWholeShare(1)).toBe('100%')
+  })
+
   it('o total conta notas, no singular e no plural', () => {
     expect(qualityTotal(1)).toBe('1 nota')
     expect(qualityTotal(8)).toBe('8 notas')
@@ -68,8 +78,9 @@ describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () =
   it('a varredura de palavras de juízo alcança as frases da matriz e da série', () => {
     expect(exportedStrings()).toEqual(
       expect.arrayContaining([
-        QUALITY_CRITERION_LEGEND,
-        QUALITY_MATRIX_LEGEND,
+        QUALITY_HEAT_CAPTION,
+        QUALITY_HEAT_LEGEND,
+        QUALITY_HEAT_OUTLIERS_NOTE,
         QUALITY_SERIES_HINT,
         QUALITY_SERIES_NOTE,
       ]),
@@ -81,7 +92,7 @@ describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () =
     expect(levelText({ value: 'low', count: 0, share: 0 })).toBe('Baixo 0% (0)')
   })
 
-  it('a distribuição inteira junta as três linhas, e a versão curta traz só os percentuais na ordem da escala', () => {
+  it('a distribuição inteira junta as três linhas, e o número da seção da rodada sai inteiro e com o rótulo depois', () => {
     const levels = [
       { value: 'high' as const, count: 5, share: 0.625 },
       { value: 'medium' as const, count: 2, share: 0.25 },
@@ -89,34 +100,30 @@ describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () =
     ]
 
     expect(levelsText(levels)).toBe('Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1)')
-    expect(levelShares(levels)).toBe('62,5 · 25 · 12,5')
+    expect(wholeLevelsText(levels)).toBe('Alto 63% (5) · Médio 25% (2) · Baixo 13% (1)')
+    expect(levelShareText(levels[0])).toBe('63% Alto')
   })
 
-  it('a legenda da matriz explica a barra e os percentuais, e diz onde está a contagem', () => {
-    expect(QUALITY_MATRIX_LEGEND).not.toContain('contagem ao lado')
-    expect(QUALITY_MATRIX_LEGEND).toContain('Alto · Médio · Baixo')
-    expect(QUALITY_MATRIX_LEGEND).toContain('ao passar o mouse na célula')
+  it('o critério que vale só para algumas definições diz em quantas', () => {
+    expect(definitionsCoverage(3, 8)).toBe('em 3 de 8 definições')
+    expect(definitionsCoverage(1, 1)).toBe('em 1 de 1 definição')
   })
 
-  it('a legenda da matriz usa as mesmas expressões da matriz de ICR e diz que sem nota não é 0%', () => {
-    expect(QUALITY_MATRIX_LEGEND).toContain(`“${CELL_UNRATED_LABEL}”`)
-    expect(QUALITY_MATRIX_LEGEND).toContain(`“${CELL_NOT_APPLICABLE}”`)
-    expect(QUALITY_MATRIX_LEGEND).toContain(CELL_NOT_APPLICABLE_TITLE)
-    expect(QUALITY_MATRIX_LEGEND).toContain('não vale 0%')
-  })
-
-  it('a legenda da tabela por critério diz que as definições se juntam numa soma, e não numa média, e onde está a matriz', () => {
-    expect(QUALITY_CRITERION_LEGEND).toBe(
-      'Na tabela por critério, cada linha junta as notas do critério em todas as definições ' +
-        'que o têm; o critério por resposta traz as notas dele. As contagens são a soma das ' +
-        'células da coluna na matriz, e as porcentagens saem desse total, e não da média das ' +
-        `células. A matriz por definição fica logo acima, em ${BY_DEFINITION_LABEL}.`,
+  it('a legenda do mapa diz o que é a célula, onde está a distribuição, e que sem nota não é 0%', () => {
+    expect(QUALITY_HEAT_CAPTION).toBe(
+      '% de notas Alto em cada definição × critério. Quanto mais escuro, mais Alto.',
     )
+    expect(QUALITY_HEAT_LEGEND).toContain('ao passar o mouse na célula')
+    expect(QUALITY_HEAT_LEGEND).toContain(`“${QUALITY_ALL_DEFINITIONS}”`)
+    expect(QUALITY_HEAT_LEGEND).toContain('e não da média das células')
+    expect(QUALITY_HEAT_LEGEND).toContain(`“${CELL_UNRATED_LABEL}”`)
+    expect(QUALITY_HEAT_LEGEND).toContain(CELL_NOT_APPLICABLE_TITLE)
+    expect(QUALITY_HEAT_LEGEND).toContain('não vale 0%')
   })
 
-  it('a legenda da matriz diz que o par vem com todos primeiro', () => {
-    const all = QUALITY_MATRIX_LEGEND.indexOf(AGREEMENT_ALL_LABEL)
-    const without = QUALITY_MATRIX_LEGEND.indexOf(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
+  it('a legenda do mapa diz que o par vem com todos primeiro', () => {
+    const all = QUALITY_HEAT_LEGEND.indexOf(AGREEMENT_ALL_LABEL)
+    const without = QUALITY_HEAT_LEGEND.indexOf(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
 
     expect(all).toBeGreaterThanOrEqual(0)
     expect(without).toBeGreaterThan(all)

@@ -34,7 +34,7 @@ import {
   weakestCriterion,
 } from '@/app/projects/[id]/(tabs)/rounds/agreement-matrix'
 import { OpenRoundCard } from '@/app/projects/[id]/(tabs)/rounds/open-round-card'
-import { QualityPanel } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
+import { QualityLine } from '@/app/projects/[id]/(tabs)/rounds/quality-line'
 import { formatShare } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
 import type { Quality } from '@/app/projects/[id]/(tabs)/rounds/quality'
 import { scaleLabel } from '@/app/projects/[id]/(tabs)/evaluate/scale'
@@ -469,7 +469,7 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
 
     const guidance = blockIndexOf(tree, ReadingGuidanceNote)
     const agreement = blockIndexOf(tree, SampleLine)
-    const quality = blockIndexOf(tree, QualityPanel)
+    const quality = blockIndexOf(tree, QualityLine)
     const comparison = blockIndexOf(tree, ReferenceComparisonPanel)
     const list = blockIndexOf(tree, RoundList)
     expect(list).toBeGreaterThanOrEqual(0)

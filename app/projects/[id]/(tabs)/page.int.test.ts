@@ -65,6 +65,7 @@ import {
   CONCORDANCE_SERIES_HINT,
 } from '@/app/projects/[id]/(tabs)/rounds/concordance-series-labels'
 import { QualityPanel } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
+import { QualityLine } from '@/app/projects/[id]/(tabs)/rounds/quality-line'
 import { QualitySeriesList } from '@/app/projects/[id]/(tabs)/rounds/quality-series-list'
 import {
   QUALITY_SERIES_HINT,
@@ -72,7 +73,7 @@ import {
   QUALITY_SERIES_NUMBERS,
 } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
 import { phaseRuns } from '@/app/projects/[id]/(tabs)/rounds/agreement-series'
-import { QualityMatrixTable } from '@/app/projects/[id]/(tabs)/rounds/quality-matrix-table'
+import { QualityHeatmap } from '@/app/projects/[id]/(tabs)/rounds/quality-heatmap'
 import { Section } from '@/app/components/ui/section'
 import { OpenLink } from '@/app/components/ui/open-link'
 import { ButtonLink } from '@/app/components/ui/button'
@@ -371,6 +372,12 @@ function seriesTextOf(tree: unknown): string {
   const label = seriesMarkupOf(tree).match(/<svg role="img" aria-label="([^"]*)"/)
   expect(label).toBeTruthy()
   return label![1]
+}
+
+function roundsQualityOf(tree: unknown): QualityProps['pair'] {
+  const element = findElement(tree, QualityLine)
+  expect(element).toBeTruthy()
+  return (element!.props as Parameters<typeof QualityLine>[0]).pair
 }
 
 function qualityOf(tree: unknown): QualityProps {
@@ -1314,7 +1321,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     })
     const agreement = agreementOf(last)
     if (!agreement.calculable) throw new Error('a rodada deveria ter coeficiente')
-    expect(last!.quality).toEqual(qualityOf(await renderRounds(project)).pair)
+    expect(last!.quality).toEqual(roundsQualityOf(await renderRounds(project)))
 
     const text = phase3TextOf(tree)
     expect(text).toContain('Rodada de referência: rodada 2')
@@ -1690,7 +1697,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
       withoutOutliers: null,
       excluded: 0,
     })
-    expect(pair).toEqual(qualityOf(await renderRounds(project)).pair)
+    expect(pair).toEqual(roundsQualityOf(await renderRounds(project)))
 
     const text = qualityTextOf(tree)
     expect(text).toContain('Alto 62,5% (5)')
@@ -1795,20 +1802,20 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
       const adminTree = await render(project)
       expect(qualityOf(adminTree).pair.all).toMatchObject({ total: 8 })
       expect(findElement(adminTree, QualitySeriesList)).toBeNull()
-      expect(findElement(await renderRounds(project), QualityMatrixTable)).toBeTruthy()
+      expect(findElement(await renderRounds(project), QualityHeatmap)).toBeTruthy()
 
       auth.userId = evaluator
       const tree = await render(project)
       expect(findElement(tree, QualityPanel)).toBeNull()
       expect(findElement(tree, QualitySeriesList)).toBeNull()
-      expect(findElement(tree, QualityMatrixTable)).toBeNull()
+      expect(findElement(tree, QualityHeatmap)).toBeNull()
       const page = deepText(tree)
       expect(page).not.toContain('Qualidade')
       expect(page).not.toContain('%')
 
       const roundsTree = await renderRounds(project)
-      expect(findElement(roundsTree, QualityMatrixTable)).toBeNull()
-      expect(findElement(roundsTree, QualityPanel)).toBeNull()
+      expect(findElement(roundsTree, QualityHeatmap)).toBeNull()
+      expect(findElement(roundsTree, QualityLine)).toBeNull()
     }
 
     await expectNoQuality()
@@ -1933,7 +1940,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     const focusPoint = qualitySeriesOf(tree).points.at(-1)!
 
     expect(focusPoint.roundNumber).toBe(4)
-    expect(focusPoint.pair).toEqual(qualityOf(await renderRounds(project)).pair)
+    expect(focusPoint.pair).toEqual(roundsQualityOf(await renderRounds(project)))
     expect(focusPoint.pair).toEqual(qualityOf(tree).pair)
   })
 

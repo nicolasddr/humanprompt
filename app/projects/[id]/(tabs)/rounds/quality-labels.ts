@@ -2,12 +2,10 @@ import { plural } from '@/lib/plural'
 import { scaleLabel } from '../evaluate/scale'
 import { PHASE_3, PHASE_4 } from '../../pipeline/preconditions'
 import type { QualityLevel } from './quality'
-import { formatShare, shareNumber } from './share'
+import { formatShare, formatWholeShare } from './share'
 import {
   AGREEMENT_ALL_LABEL,
   AGREEMENT_WITHOUT_OUTLIERS_LABEL,
-  BY_DEFINITION_LABEL,
-  CELL_NOT_APPLICABLE,
   CELL_NOT_APPLICABLE_TITLE,
   CELL_UNRATED_LABEL,
 } from './agreement-labels'
@@ -22,23 +20,32 @@ export const QUALITY_HINT =
   `A distribuição das notas desta rodada entre ${scaleLabel('high')}, ` +
   `${scaleLabel('medium')} e ${scaleLabel('low')}.`
 
-export const QUALITY_CRITERION_LEGEND =
-  'Na tabela por critério, cada linha junta as notas do critério em todas as definições ' +
-  'que o têm; o critério por resposta traz as notas dele. As contagens são a soma das ' +
-  'células da coluna na matriz, e as porcentagens saem desse total, e não da média das ' +
-  `células. A matriz por definição fica logo acima, em ${BY_DEFINITION_LABEL}.`
+export const QUALITY_ALL_DEFINITIONS = 'Todas'
 
-export const QUALITY_MATRIX_LEGEND =
-  'Na matriz, cada célula traz a distribuição das notas daquela definição × critério ' +
-  `entre ${scaleLabel('high')}, ${scaleLabel('medium')} e ${scaleLabel('low')}: a barra e ` +
-  `os percentuais em ${scaleLabel('high')} · ${scaleLabel('medium')} · ${scaleLabel('low')}; ` +
-  'a contagem aparece ao passar o mouse na célula. ' +
-  `“${CELL_UNRATED_LABEL}” é célula que existe no codebook e que ` +
-  'ninguém avaliou ainda, e não vale 0%; ' +
-  `“${CELL_NOT_APPLICABLE}” é ${CELL_NOT_APPLICABLE_TITLE}, que não se aplica a esta. ` +
+export const QUALITY_NOT_APPLICABLE = 'não se aplica'
+
+export const QUALITY_PER_RESPONSE_LEAD = 'Avaliados por resposta:'
+
+export const QUALITY_HEAT_CAPTION =
+  `% de notas ${scaleLabel('high')} em cada definição × critério. ` +
+  `Quanto mais escuro, mais ${scaleLabel('high')}.`
+
+export const QUALITY_HEAT_OUTLIERS_NOTE =
+  `Com avaliador marcado como outlier, o número de baixo é ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}.`
+
+export const QUALITY_HEAT_LEGEND =
+  `Cada célula traz a porcentagem de notas ${scaleLabel('high')} daquela definição × ` +
+  'critério, e o fundo fica mais escuro quanto maior ela é; a distribuição entre ' +
+  `${scaleLabel('high')}, ${scaleLabel('medium')} e ${scaleLabel('low')}, com as ` +
+  'contagens, aparece ao passar o mouse na célula. ' +
+  `A linha “${QUALITY_ALL_DEFINITIONS}” junta as notas do critério em todas as definições ` +
+  'que o têm, e a porcentagem sai desse total, e não da média das células. ' +
+  `A célula hachurada é de ${CELL_NOT_APPLICABLE_TITLE}, que não se aplica a esta; ` +
+  `“${CELL_UNRATED_LABEL}” é célula que existe no codebook e que ninguém avaliou ainda, ` +
+  'e não vale 0%. Os critérios por resposta julgam a resposta inteira, sem definição, e ' +
+  'ficam na frase abaixo da grade. ' +
   'Com avaliador marcado como outlier, cada célula traz os dois valores, ' +
-  `${AGREEMENT_ALL_LABEL} primeiro e ${AGREEMENT_WITHOUT_OUTLIERS_LABEL} depois, ao ` +
-  `contrário da matriz de concordância e confiabilidade, que fica só ${AGREEMENT_ALL_LABEL}.`
+  `${AGREEMENT_ALL_LABEL} em cima e ${AGREEMENT_WITHOUT_OUTLIERS_LABEL} embaixo.`
 
 export const QUALITY_SERIES_HINT =
   `A distribuição das notas de cada rodada das Fases ${PHASE_3} e ${PHASE_4}, um ponto por rodada.`
@@ -49,7 +56,7 @@ export const QUALITY_SERIES_NOTE =
 
 export const QUALITY_SERIES_NUMBERS = 'Ver os números de cada rodada'
 
-export { formatShare }
+export { formatShare, formatWholeShare }
 
 export function qualityTotal(total: number): string {
   return plural(total, 'nota', 'notas')
@@ -67,6 +74,18 @@ export function levelsShareText(levels: QualityLevel[]): string {
   return levels.map((level) => `${scaleLabel(level.value)} ${formatShare(level.share)}`).join(' · ')
 }
 
-export function levelShares(levels: QualityLevel[]): string {
-  return levels.map((level) => shareNumber(level.share)).join(' · ')
+export function wholeLevelText(level: QualityLevel): string {
+  return `${scaleLabel(level.value)} ${formatWholeShare(level.share)} (${level.count})`
+}
+
+export function wholeLevelsText(levels: QualityLevel[]): string {
+  return levels.map(wholeLevelText).join(' · ')
+}
+
+export function levelShareText(level: QualityLevel): string {
+  return `${formatWholeShare(level.share)} ${scaleLabel(level.value)}`
+}
+
+export function definitionsCoverage(count: number, total: number): string {
+  return `em ${count} de ${plural(total, 'definição', 'definições')}`
 }

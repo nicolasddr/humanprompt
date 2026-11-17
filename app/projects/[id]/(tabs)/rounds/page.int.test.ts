@@ -48,20 +48,16 @@ import { AgreementMatrixTable } from '@/app/projects/[id]/(tabs)/rounds/agreemen
 import { CriterionAgreementTable } from '@/app/projects/[id]/(tabs)/rounds/criterion-agreement-table'
 import { CriterionByDefinitionTable } from '@/app/projects/[id]/(tabs)/rounds/criterion-by-definition-table'
 import { Tab, TabList } from '@/app/components/ui/tabs'
-import {
-  QualityMatrixNotes,
-  QualityMatrixTable,
-} from '@/app/projects/[id]/(tabs)/rounds/quality-matrix-table'
-import { CriterionQualityTable } from '@/app/projects/[id]/(tabs)/rounds/criterion-quality-table'
+import { QualityHeatmap } from '@/app/projects/[id]/(tabs)/rounds/quality-heatmap'
+import { QualityLine } from '@/app/projects/[id]/(tabs)/rounds/quality-line'
 import { HOW_TO_READ_TABLE, HowToRead } from '@/app/projects/[id]/(tabs)/rounds/how-to-read'
+import { QualityPanel, QualitySummary } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
 import {
-  QualityPanel,
-  QualitySummary,
-} from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
-import {
-  QUALITY_HINT,
-  QUALITY_CRITERION_LEGEND,
-  QUALITY_MATRIX_LEGEND,
+  QUALITY_ALL_DEFINITIONS,
+  QUALITY_HEAT_LEGEND,
+  QUALITY_HEAT_OUTLIERS_NOTE,
+  QUALITY_NOT_APPLICABLE,
+  QUALITY_PER_RESPONSE_LEAD,
   QUALITY_UNRATED,
   QUALITY_UNRATED_WITHOUT_OUTLIERS,
 } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
@@ -263,10 +259,8 @@ type CriterionTableProps = Parameters<typeof CriterionAgreementTable>[0]
 type ByDefinitionTableProps = Parameters<typeof CriterionByDefinitionTable>[0]
 type TabProps = Parameters<typeof Tab>[0]
 type EvaluatorProps = Parameters<typeof EvaluatorRounds>[0]
-type QualityProps = Parameters<typeof QualityPanel>[0]
-type QualityMatrixProps = Parameters<typeof QualityMatrixTable>[0]
-type QualityNotesProps = Parameters<typeof QualityMatrixNotes>[0]
-type CriterionQualityProps = Parameters<typeof CriterionQualityTable>[0]
+type QualityProps = Parameters<typeof QualityLine>[0]
+type QualityHeatProps = Parameters<typeof QualityHeatmap>[0]
 type ChangesProps = Parameters<typeof RoundChangeChips>[0]
 type GuidanceProps = Parameters<typeof ReadingGuidanceNote>[0]
 type ShortcutsProps = Parameters<typeof ReadingShortcuts>[0]
@@ -386,28 +380,16 @@ function evaluatorRoundsOf(tree: unknown): EvaluatorProps {
   return element!.props as EvaluatorProps
 }
 
-function qualityPanelOf(tree: unknown): QualityProps {
-  const element = findElement(tree, QualityPanel)
+function qualityLineOf(tree: unknown): QualityProps {
+  const element = findElement(tree, QualityLine)
   expect(element).toBeTruthy()
   return element!.props as QualityProps
 }
 
-function qualityMatrixOf(tree: unknown): QualityMatrixProps {
-  const element = findElement(tree, QualityMatrixTable)
+function qualityHeatOf(tree: unknown): QualityHeatProps {
+  const element = findElement(tree, QualityHeatmap)
   expect(element).toBeTruthy()
-  return element!.props as QualityMatrixProps
-}
-
-function qualityNotesOf(tree: unknown): QualityNotesProps {
-  const element = findElement(tree, QualityMatrixNotes)
-  expect(element).toBeTruthy()
-  return element!.props as QualityNotesProps
-}
-
-function criterionQualityOf(tree: unknown): CriterionQualityProps {
-  const element = findElement(tree, CriterionQualityTable)
-  expect(element).toBeTruthy()
-  return element!.props as CriterionQualityProps
+  return element!.props as QualityHeatProps
 }
 
 function guidanceOf(tree: unknown): GuidanceProps | null {
@@ -502,7 +484,7 @@ function agreementSectionTextOf(tree: unknown): string {
 }
 
 function qualityTextOf(tree: unknown): string {
-  return markupTextOf(createElement(QualityPanel, qualityPanelOf(tree)))
+  return visibleTextOf(createElement(QualityLine, qualityLineOf(tree)))
 }
 
 function classNamesOf(element: ReactElement): string[] {
@@ -529,29 +511,17 @@ function criterionTableTextOf(tree: unknown): string {
   return markupTextOf(createElement(CriterionAgreementTable, criterionTableOf(tree)))
 }
 
-function qualityMatrixTextOf(tree: unknown): string {
-  return markupTextOf(createElement(QualityMatrixTable, qualityMatrixOf(tree)))
+function qualityHeatTextOf(tree: unknown): string {
+  return markupTextOf(createElement(QualityHeatmap, qualityHeatOf(tree)))
 }
 
-function qualityNotesTextOf(tree: unknown): string {
-  return markupTextOf(createElement(QualityMatrixNotes, qualityNotesOf(tree)))
-}
-
-function criterionQualityTextOf(tree: unknown): string {
-  return visibleTextOf(createElement(CriterionQualityTable, criterionQualityOf(tree)))
-}
-
-function qualityByDefinitionOf(tree: unknown): ReactElement {
-  const element = findElement(findSection(tree, QualityMatrixTable), ByDefinition)
-  expect(element).toBeTruthy()
-  return element!
+function qualityHeatMarkupOf(tree: unknown): string {
+  return renderToStaticMarkup(createElement(QualityHeatmap, qualityHeatOf(tree)))
 }
 
 function qualityCellMarkupsOf(tree: unknown): string[] {
-  const markup = renderToStaticMarkup(
-    createElement(QualityMatrixTable, qualityMatrixOf(tree)),
-  )
-  return [...markup.matchAll(/<td[^>]*>(.*?)<\/td>/g)].map((match) => match[1])
+  const body = qualityHeatMarkupOf(tree).split('<tbody>')[1] ?? ''
+  return [...body.matchAll(/<td([^>]*)>(.*?)<\/td>/g)].map((match) => match[0])
 }
 
 function qualityCellsOf(tree: unknown): string[] {
@@ -1266,7 +1236,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(list.rounds.map((round) => [round.roundNumber, round.phase])).toEqual([
       [1, PHASE_3],
     ])
-    expect(qualityPanelOf(tree).pair.all).toMatchObject({ rated: true, total: 8 })
+    expect(qualityLineOf(tree).pair.all).toMatchObject({ rated: true, total: 8 })
   })
 
   it('na Fase 4, com o codebook mudado depois da rodada de referência, a nova rodada fica recusada', async () => {
@@ -2074,7 +2044,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    const pair = qualityPanelOf(tree).pair
+    const pair = qualityLineOf(tree).pair
     expect(pair.withoutOutliers).toBeNull()
     expect(pair.all).toEqual({
       rated: true,
@@ -2086,14 +2056,12 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
       ],
     })
 
-    const text = qualityTextOf(tree)
-    expect(text).toContain('Qualidade')
-    expect(text).toContain('8 notas')
-    expect(text).toContain('Alto 62,5% (5)')
-    expect(text).toContain('Médio 25% (2)')
-    expect(text).toContain('Baixo 12,5% (1)')
+    expect(qualityTextOf(tree)).toBe('8 notas 63% Alto 25% Médio 13% Baixo')
+    expect(renderToStaticMarkup(createElement(QualityLine, qualityLineOf(tree)))).toContain(
+      'title="Alto 63% (5) · Médio 25% (2) · Baixo 13% (1)"',
+    )
 
-    const section = findSection(tree, QualityPanel)
+    const section = findSection(tree, QualityLine)
     expect(textOf((section!.props as { title: ReactNode }).title)).toBe(
       'Qualidade na rodada 1, fechada',
     )
@@ -2106,7 +2074,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    expect(findElement(tree, QualityPanel)).toBeNull()
+    expect(findElement(tree, QualityLine)).toBeNull()
     expect(criterionTableTextOf(tree)).toMatch(/Clareza \d+ notas -?\d,\d{3} /)
 
     const list = listOf(tree)
@@ -2122,12 +2090,12 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    const qualitySection = findSection(tree, QualityPanel)
+    const qualitySection = findSection(tree, QualityLine)
     const agreementSection = findSection(tree, SampleLine)
     expect(qualitySection).toBeTruthy()
     expect(agreementSection).toBeTruthy()
     expect(qualitySection).not.toBe(agreementSection)
-    expect(findElement(agreementSection, QualityPanel)).toBeNull()
+    expect(findElement(agreementSection, QualityLine)).toBeNull()
     expect(findElement(qualitySection, SampleLine)).toBeNull()
     expect(findElement(qualitySection, CriterionAgreementTable)).toBeNull()
 
@@ -2148,7 +2116,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    expect(qualityPanelOf(tree).pair).toEqual({
+    expect(qualityLineOf(tree).pair).toEqual({
       all: { rated: false, total: 0 },
       withoutOutliers: null,
       excluded: 0,
@@ -2169,7 +2137,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    const pair = qualityPanelOf(tree).pair
+    const pair = qualityLineOf(tree).pair
     expect(pair.excluded).toBe(1)
     expect(pair.all).toMatchObject({ rated: true, total: 8 })
     expect(pair.withoutOutliers).toEqual({
@@ -2182,18 +2150,12 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
       ],
     })
 
-    const text = qualityTextOf(tree)
-    const allAt = text.indexOf(`Qualidade — ${AGREEMENT_ALL_LABEL}`)
-    const withoutAt = text.indexOf(`Qualidade — ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`)
-    expect(allAt).toBeGreaterThanOrEqual(0)
-    expect(withoutAt).toBeGreaterThan(allAt)
-    expect(text).toContain('Alto 75% (3)')
-    expect(text).toContain('1 avaliador fora')
-
-    const visible = visibleTextOf(createElement(QualityPanel, qualityPanelOf(tree)))
-    expect(visible).toContain(OUTLIER_PAIR_RESULT)
-    expect(visible).not.toContain(OUTLIER_PAIR_SUMMARY)
-    expect(tooltipTextsOf(QualityPanel(qualityPanelOf(tree)))).toEqual([OUTLIER_PAIR_SUMMARY])
+    expect(qualityTextOf(tree)).toContain(
+      `${AGREEMENT_ALL_LABEL} 8 notas 63% Alto 25% Médio 13% Baixo ` +
+        `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} 4 notas 75% Alto 25% Médio 0% Baixo ` +
+        `1 avaliador fora ${OUTLIER_PAIR_RESULT}`,
+    )
+    expect(tooltipTextsOf(QualityLine(qualityLineOf(tree)))).toEqual([OUTLIER_PAIR_SUMMARY])
 
     const summary = findElement(RoundList(listOf(tree)), QualitySummary)!
     const value = markupTextOf(summary)
@@ -2214,12 +2176,12 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    const pair = qualityPanelOf(tree).pair
+    const pair = qualityLineOf(tree).pair
     expect(pair.all).toMatchObject({ rated: true, total: 8 })
     expect(pair.withoutOutliers).toEqual({ rated: false, total: 0 })
 
     const text = qualityTextOf(tree)
-    expect(text).toContain('Alto 62,5% (5)')
+    expect(text).toContain('8 notas 63% Alto')
     expect(text).toContain(QUALITY_UNRATED_WITHOUT_OUTLIERS)
   })
 
@@ -2233,7 +2195,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
 
     const tooltipClasses = new Set(classNamesOf(createElement(InfoTooltip, { text: '' })))
     const classes = [
-      ...classNamesOf(createElement(QualityPanel, qualityPanelOf(tree))),
+      ...classNamesOf(createElement(QualityLine, qualityLineOf(tree))),
       ...classNamesOf(findElement(RoundList(listOf(tree)), QualitySummary)!),
     ].filter((className) => !tooltipClasses.has(className))
     expect(classes.length).toBeGreaterThan(0)
@@ -2243,11 +2205,26 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
       }
     }
 
-    const markup = renderToStaticMarkup(createElement(QualityPanel, qualityPanelOf(tree)))
-    expect(markup.match(/<div aria-hidden="true" class="flex [^"]*"/g)).toHaveLength(2)
+    const markup = renderToStaticMarkup(createElement(QualityLine, qualityLineOf(tree)))
+    expect(markup.match(/<div aria-hidden="true"[^>]* class="flex [^"]*"/g)).toHaveLength(2)
     const slices = markup.match(/class="h-full bg-quality-[a-z]+"/g)
     const tones = ['high', 'medium', 'low'].map((tone) => `class="h-full bg-quality-${tone}"`)
     expect(slices).toEqual([...tones, ...tones])
+  })
+
+  it('na linha da Qualidade, o zero fica em cinza-claro e os outros pontos não', async () => {
+    const admin = await newUser('Admin')
+    const { scene, bruno } = await qualityScene(admin, PHASE_3)
+    await addOutlier(ownerDb, scene.round, bruno, admin)
+
+    auth.userId = admin
+    const markup = renderToStaticMarkup(
+      createElement(QualityLine, qualityLineOf(await render(scene.project))),
+    )
+
+    const faint = [...markup.matchAll(/<span class="[^"]*text-faint[^"]*">(.*?)<\/span>(?=<span|<\/p>)/g)]
+    expect(faint.map((match) => match[1].replace(/<[^>]*>/g, ''))).toEqual(['0% Baixo'])
+    expect(markup).not.toMatch(/uppercase/)
   })
 
   it('numa rodada da Fase 3, o Administrador vê a matriz de Qualidade da versão fixada', async () => {
@@ -2258,46 +2235,50 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     const tree = await render(scene.project)
 
     const codebook = await loadCodebookVersion(scene.project, scene.codebookVersion)
-    const props = qualityMatrixOf(tree)
+    const props = qualityHeatOf(tree)
     expect(props.definitions).toEqual(codebook!.definitions)
     expect(props.criteria).toEqual(codebook!.criteria)
     expect(props.codebookVersionNumber).toBe(1)
     expect(props.excluded.size).toBe(0)
 
+    const markup = qualityHeatMarkupOf(tree)
+    expect(rowTitlesOf(markup)).toEqual([
+      QUALITY_ALL_DEFINITIONS,
+      'Informacional',
+      'Transacional',
+    ])
+    expect(columnTitlesOf(markup)).toEqual([
+      'Clareza',
+      'Profundidade em 1 de 2 definições',
+      'Precisão em 1 de 2 definições',
+    ])
+
     const cells = qualityCellsOf(tree)
-    expect(cells).toHaveLength(6)
-    expect(cells[0]).toBe('75 · 0 · 25')
-    expect(cells[1]).toBe('25 · 50 · 25')
-    expect(cells[3]).toBe('0 · 50 · 50')
+    expect(cells).toHaveLength(9)
+    expect(cells.slice(3, 5)).toEqual(['75', '25'])
+    expect(cells[6]).toBe('0')
 
     const markups = qualityCellMarkupsOf(tree)
-    expect(markups[0]).toContain('title="Alto 75% (3) · Médio 0% (0) · Baixo 25% (1)"')
-    expect(markups[3]).toContain('title="Alto 0% (0) · Médio 50% (2) · Baixo 50% (2)"')
-    for (const index of [0, 1, 3]) {
-      expect(markups[index].match(/<div aria-hidden="true" class="flex [^"]*h-1\.5/g)).toHaveLength(1)
-      expect(markups[index].match(/class="h-full bg-quality-[a-z]+"/g)).toHaveLength(3)
-    }
-    for (const index of [2, 4, 5]) {
+    expect(markups[3]).toContain('title="Alto 75% (3) · Médio 0% (0) · Baixo 25% (1)"')
+    expect(markups[6]).toContain('title="Alto 0% (0) · Médio 50% (2) · Baixo 50% (2)"')
+    expect(markups[3]).toContain('color-mix(in srgb, var(--color-quality-high) 66%, transparent)')
+    expect(markups[3]).toContain('text-white')
+    expect(markups[4]).toContain('text-ink')
+    expect(markups[6]).toContain('text-faint')
+    for (const index of [3, 4, 6]) {
       expect(markups[index]).not.toContain('bg-quality-')
     }
 
-    const text = qualityMatrixTextOf(tree)
-    expect(text).toContain('Informacional')
-    expect(text).toContain('Transacional')
+    const text = qualityHeatTextOf(tree)
     expect(text.indexOf('Clareza')).toBeLessThan(text.indexOf('Profundidade'))
     expect(text.indexOf('Profundidade')).toBeLessThan(text.indexOf('Precisão'))
-    expect(text).not.toContain('Alto · Médio · Baixo, em %')
-    expect(text).not.toContain('Codebook v1')
-
-    expect(qualityNotesOf(tree)).toEqual({
-      criteria: codebook!.criteria,
-      codebookVersionNumber: 1,
-    })
-    expect(qualityNotesTextOf(tree)).toContain('Alto · Médio · Baixo, em %')
-    expect(qualityNotesTextOf(tree)).toContain('Codebook v1')
+    expect(text).toContain('% de notas Alto em cada definição × critério.')
+    expect(text).not.toContain(QUALITY_HEAT_OUTLIERS_NOTE)
+    expect(text).not.toContain(QUALITY_PER_RESPONSE_LEAD)
+    expect(text).not.toContain('Codebook v1 da rodada')
   })
 
-  it('na matriz de Qualidade, o par inexistente é traço e a célula sem nota diz sem nota, nunca 0%', async () => {
+  it('na matriz de Qualidade, o par inexistente é hachurado e a célula sem nota diz sem nota, nunca 0%', async () => {
     const admin = await newUser('Admin')
     const { scene } = await qualityMatrixScene(admin)
 
@@ -2305,31 +2286,29 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     const tree = await render(scene.project)
 
     const cells = qualityCellsOf(tree)
-    expect(cells[2]).toBe(CELL_NOT_APPLICABLE)
-    expect(cells[4]).toBe(CELL_NOT_APPLICABLE)
-    expect(cells[5]).toBe(CELL_UNRATED_LABEL)
-    expect(cells[5]).not.toContain('%')
+    expect(cells[2]).toBe(CELL_UNRATED_LABEL)
+    expect(cells[5]).toBe(QUALITY_NOT_APPLICABLE)
+    expect(cells[7]).toBe(QUALITY_NOT_APPLICABLE)
+    expect(cells[8]).toBe(CELL_UNRATED_LABEL)
+    expect(cells[8]).not.toContain('%')
 
-    const markup = renderToStaticMarkup(
-      createElement(QualityMatrixTable, qualityMatrixOf(tree)),
-    )
-    expect(markup.split(`title="${CELL_NOT_APPLICABLE_TITLE}"`)).toHaveLength(3)
+    const markups = qualityCellMarkupsOf(tree)
+    for (const index of [5, 7]) {
+      expect(markups[index]).toContain(`title="${CELL_NOT_APPLICABLE_TITLE}"`)
+      expect(markups[index]).toContain('repeating-linear-gradient')
+      expect(markups[index]).toContain('sr-only')
+    }
+    expect(markups[8]).not.toContain('repeating-linear-gradient')
+    expect(qualityHeatTextOf(tree)).not.toContain(CELL_NOT_APPLICABLE)
 
-    const table = QualityMatrixTable(qualityMatrixOf(tree))
-    expect(tooltipTextsOf(table)).toEqual([])
-    expect(howToReadOf(table)).toEqual([])
+    const heat = QualityHeatmap(qualityHeatOf(tree))
+    expect(tooltipTextsOf(heat)).toEqual([])
+    expect(howToReadOf(heat)).toEqual([[matrixVersionNote(1), QUALITY_HEAT_LEGEND]])
 
-    const notes = createElement(QualityMatrixNotes, qualityNotesOf(tree))
-    expect(tooltipTextsOf(QualityMatrixNotes(qualityNotesOf(tree)))).toEqual([])
-    expect(howToReadOf(QualityMatrixNotes(qualityNotesOf(tree)))).toEqual([
-      [matrixVersionNote(1), QUALITY_CRITERION_LEGEND, QUALITY_MATRIX_LEGEND],
-    ])
-    expect(renderToStaticMarkup(notes)).toContain(HOW_TO_READ_TABLE)
-    expect(opensClosed(notes)).toBe(true)
-
-    const visible = glanceTextOf(notes)
-    expect(visible).toContain('Codebook v1 da rodada')
-    expect(visible).not.toContain('vigente')
+    const element = createElement(QualityHeatmap, qualityHeatOf(tree))
+    expect(renderToStaticMarkup(element)).toContain(HOW_TO_READ_TABLE)
+    expect(opensClosed(element)).toBe(true)
+    expect(glanceTextOf(element)).not.toContain('vigente')
   })
 
   it('a matriz de Qualidade fica no bloco da Qualidade, e a de Concordância no dela, sem prop nova', async () => {
@@ -2339,14 +2318,14 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    const qualitySection = findSection(tree, QualityMatrixTable)
+    const qualitySection = findSection(tree, QualityHeatmap)
     expect(qualitySection).toBeTruthy()
-    expect(qualitySection).toBe(findSection(tree, QualityPanel))
+    expect(qualitySection).toBe(findSection(tree, QualityLine))
     expect(findElement(qualitySection, AgreementMatrixTable)).toBeNull()
 
     const agreementSection = findSection(tree, AgreementMatrixTable)
     expect(agreementSection).toBe(findSection(tree, SampleLine))
-    expect(findElement(agreementSection, QualityMatrixTable)).toBeNull()
+    expect(findElement(agreementSection, QualityHeatmap)).toBeNull()
     expect(Object.keys(matrixOf(tree)).sort()).toEqual([
       'codebookVersionNumber',
       'criteria',
@@ -2363,14 +2342,12 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    expect(findElement(tree, QualityMatrixTable)).toBeNull()
-    expect(findElement(tree, CriterionQualityTable)).toBeNull()
-    expect(findElement(tree, QualityMatrixNotes)).toBeNull()
+    expect(findElement(tree, QualityHeatmap)).toBeNull()
     expect(matrixOf(tree).codebookVersionNumber).toBe(1)
     expect(matrixTextOf(tree)).toContain('Profundidade')
   })
 
-  it('com alguém marcado, cada célula medida da matriz de Qualidade traz o par, o com todos primeiro', async () => {
+  it('com alguém marcado, cada célula medida da matriz de Qualidade traz o par, o com todos em cima', async () => {
     const admin = await newUser('Admin')
     const { scene, carla } = await qualityMatrixScene(admin, { carla: true })
     await addOutlier(ownerDb, scene.round, carla!, admin)
@@ -2378,23 +2355,18 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    expect(qualityMatrixOf(tree).excluded.size).toBe(1)
+    expect(qualityHeatOf(tree).excluded.size).toBe(1)
 
     const cells = qualityCellsOf(tree)
-    expect(cells[0]).toBe(
-      `${AGREEMENT_ALL_LABEL} 60 · 0 · 40 ${AGREEMENT_WITHOUT_OUTLIERS_LABEL} 75 · 0 · 25`,
-    )
-    expect(cells[1]).toBe(
-      `${AGREEMENT_ALL_LABEL} 25 · 50 · 25 ${AGREEMENT_WITHOUT_OUTLIERS_LABEL} 25 · 50 · 25`,
-    )
-    expect(cells[5]).toBe(CELL_UNRATED_LABEL)
+    expect(cells.slice(0, 3)).toEqual(['33 38', '25 25', CELL_UNRATED_LABEL])
+    expect(cells.slice(3, 5)).toEqual(['60 75', '25 25'])
+    expect(cells[8]).toBe(CELL_UNRATED_LABEL)
 
-    const markup = qualityCellMarkupsOf(tree)[0]
-    const all = markup.indexOf('title="Alto 60% (3) · Médio 0% (0) · Baixo 40% (2)"')
-    const without = markup.indexOf('title="Alto 75% (3) · Médio 0% (0) · Baixo 25% (1)"')
-    expect(all).toBeGreaterThanOrEqual(0)
-    expect(without).toBeGreaterThan(all)
-    expect(markup.match(/<div aria-hidden="true" class="flex [^"]*h-1\.5/g)).toHaveLength(2)
+    expect(qualityCellMarkupsOf(tree)[3]).toContain(
+      `title="${AGREEMENT_ALL_LABEL}: Alto 60% (3) · Médio 0% (0) · Baixo 40% (2) · ` +
+        `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: Alto 75% (3) · Médio 0% (0) · Baixo 25% (1)"`,
+    )
+    expect(qualityHeatTextOf(tree)).toContain(QUALITY_HEAT_OUTLIERS_NOTE)
   })
 
   it('sem ninguém marcado, a matriz de Qualidade não traz os rótulos do par', async () => {
@@ -2402,13 +2374,15 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     const { scene } = await qualityMatrixScene(admin, { carla: true })
 
     auth.userId = admin
-    const cells = qualityCellsOf(await render(scene.project))
+    const tree = await render(scene.project)
+    const cells = qualityCellsOf(tree)
 
-    expect(cells[0]).toBe('60 · 0 · 40')
-    for (const cell of cells) {
-      expect(cell).not.toContain(AGREEMENT_ALL_LABEL)
-      expect(cell).not.toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
+    expect(cells[3]).toBe('60')
+    for (const markup of qualityCellMarkupsOf(tree)) {
+      expect(markup).not.toContain(AGREEMENT_ALL_LABEL)
+      expect(markup).not.toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
     }
+    expect(qualityHeatTextOf(tree)).not.toContain(QUALITY_HEAT_OUTLIERS_NOTE)
   })
 
   it('a célula avaliada só pelo marcado diz que não sobra nota, ao lado do com todos', async () => {
@@ -2425,11 +2399,12 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     await addOutlier(ownerDb, scene.round, carla, admin)
 
     auth.userId = admin
-    const cells = qualityCellsOf(await render(scene.project))
+    const tree = await render(scene.project)
 
-    expect(cells[3]).toBe(
-      `${AGREEMENT_ALL_LABEL} 0 · 0 · 100 ` +
-        `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} ${QUALITY_UNRATED_WITHOUT_OUTLIERS}`,
+    expect(qualityCellsOf(tree)[6]).toBe(`0 ${CELL_UNRATED_LABEL}`)
+    expect(qualityCellMarkupsOf(tree)[6]).toContain(
+      `title="${AGREEMENT_ALL_LABEL}: Alto 0% (0) · Médio 0% (0) · Baixo 100% (1) · ` +
+        `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: ${QUALITY_UNRATED_WITHOUT_OUTLIERS}"`,
     )
   })
 
@@ -2447,19 +2422,17 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    const props = qualityMatrixOf(tree)
+    const props = qualityHeatOf(tree)
     expect(props.codebookVersionNumber).toBe(1)
     expect(props.definitions.map((definition) => definition.title)).toEqual([
       'Informacional',
     ])
 
-    const text = qualityMatrixTextOf(tree)
+    const text = qualityHeatTextOf(tree)
     expect(text).toContain('Clareza')
     expect(text).not.toContain('Navegacional')
     expect(text).not.toContain('Profundidade')
-    expect(qualityNotesTextOf(tree)).toContain('Codebook v1')
-    expect(criterionQualityOf(tree).definitions).toEqual(props.definitions)
-    expect(criterionQualityTextOf(tree)).not.toContain('Profundidade')
+    expect(text).toContain(matrixVersionNote(1))
   })
 
   it('a matriz de Qualidade não usa cor de juízo em nenhum elemento', async () => {
@@ -2471,8 +2444,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     const tree = await render(scene.project)
 
     const tokens = [
-      ...classNamesOf(createElement(QualityMatrixTable, qualityMatrixOf(tree))),
-      ...classNamesOf(createElement(CriterionQualityTable, criterionQualityOf(tree))),
+      ...classNamesOf(createElement(QualityHeatmap, qualityHeatOf(tree))),
     ]
       .flatMap((className) => className.split(/\s+/))
       .filter((token) => !token.startsWith('focus-visible:'))
@@ -2595,8 +2567,8 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(rounds.hint).toBeUndefined()
     expect(rounds.help).toBeUndefined()
 
-    const quality = findSection(tree, QualityMatrixTable)!.props as SectionProps
-    expect(quality.hint).toBe(QUALITY_HINT)
+    const quality = findSection(tree, QualityHeatmap)!.props as SectionProps
+    expect(quality.hint).toBeUndefined()
     expect(quality.help).toBeUndefined()
     expect(quality.more).toBeUndefined()
   })
@@ -3111,37 +3083,34 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(summaryOf(byDefinitionOf(tree))).toBe('Por definição (5 definições × 1 critério)')
   })
 
-  it('a matriz de Qualidade traz a linha “Por resposta” com a distribuição das notas por resposta', async () => {
+  it('a matriz de Qualidade deixa o critério por resposta de fora, e ele aparece uma vez só, na frase de baixo', async () => {
     const admin = await newUser('Admin')
     const scene = await perResponseScene(admin)
 
     auth.userId = admin
     const tree = await render(scene.project)
-    const markup = renderToStaticMarkup(createElement(QualityMatrixTable, qualityMatrixOf(tree)))
+    const markup = qualityHeatMarkupOf(tree)
 
-    expect(rowTitlesOf(markup).at(-1)).toBe(PER_RESPONSE_LABEL)
-    expect(rowTitlesOf(markup)).toHaveLength(6)
-    expect(columnTitlesOf(markup)).toEqual([
-      'Definição',
-      'Relevance Geral',
-      `Diversity ${PER_RESPONSE_LABEL}`,
+    expect(rowTitlesOf(markup)).toEqual([
+      QUALITY_ALL_DEFINITIONS,
+      'Query 1',
+      'Query 2',
+      'Query 3',
+      'Query 4',
+      'Query 5',
     ])
+    expect(columnTitlesOf(markup)).toEqual(['Relevance'])
+    expect(qualityCellsOf(tree)).toEqual(['50', '50', '50', '50', '50', '50'])
 
-    const cells = qualityCellsOf(tree)
-    expect(cells).toHaveLength(12)
-    expect(cells.slice(0, 2)).toEqual(['50 · 0 · 50', CELL_NOT_APPLICABLE])
-    expect(cells.slice(10)).toEqual([CELL_NOT_APPLICABLE, '25 · 25 · 50'])
-
-    expect(titleCountOf(markup, CELL_PER_RESPONSE_ROW_TITLE)).toBe(1)
-    expect(titleCountOf(markup, CELL_PER_RESPONSE_COLUMN_TITLE)).toBe(5)
-    expect(titleCountOf(markup, CELL_NOT_APPLICABLE_TITLE)).toBe(0)
-    expect(howToReadOf(QualityMatrixNotes(qualityNotesOf(tree)))).toEqual([
-      [
-        matrixVersionNote(1),
-        QUALITY_CRITERION_LEGEND,
-        QUALITY_MATRIX_LEGEND,
-        MATRIX_PER_RESPONSE_LEGEND,
-      ],
+    const text = qualityHeatTextOf(tree)
+    expect(text).toContain(`${QUALITY_PER_RESPONSE_LEAD} Diversity 25% Alto`)
+    expect(text.split('Diversity')).toHaveLength(2)
+    expect(text).not.toContain(PER_RESPONSE_LABEL)
+    expect(markup).toContain('title="Alto 25% (1) · Médio 25% (1) · Baixo 50% (2)"')
+    expect(titleCountOf(markup, CELL_PER_RESPONSE_ROW_TITLE)).toBe(0)
+    expect(titleCountOf(markup, CELL_PER_RESPONSE_COLUMN_TITLE)).toBe(0)
+    expect(howToReadOf(QualityHeatmap(qualityHeatOf(tree)))).toEqual([
+      [matrixVersionNote(1), QUALITY_HEAT_LEGEND],
     ])
   })
 
@@ -3154,7 +3123,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
 
     for (const table of [
       createElement(AgreementMatrixTable, matrixOf(tree)),
-      createElement(QualityMatrixTable, qualityMatrixOf(tree)),
+      createElement(QualityHeatmap, qualityHeatOf(tree)),
     ]) {
       const markup = renderToStaticMarkup(table)
       expect(markupTextOf(table)).not.toContain(MATRIX_PER_RESPONSE_LEGEND)
@@ -3162,127 +3131,82 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
       expect(titleCountOf(markup, CELL_PER_RESPONSE_COLUMN_TITLE)).toBe(0)
       expect(rowTitlesOf(markup)).not.toContain(PER_RESPONSE_LABEL)
     }
-    expect(howToReadOf(QualityMatrixNotes(qualityNotesOf(tree))).flat()).not.toContain(
-      MATRIX_PER_RESPONSE_LEGEND,
-    )
+    expect(qualityHeatTextOf(tree)).not.toContain(QUALITY_PER_RESPONSE_LEAD)
   })
 
-  it('a Qualidade abre com a tabela por critério, a matriz por definição vem à mostra, e a legenda e o Como ler ficam fora dela', async () => {
+  it('a Qualidade abre com a linha do resumo e o mapa logo abaixo, sem cartão, selo, caixa alta nem subtítulo', async () => {
     const admin = await newUser('Admin')
     const { scene } = await qualityMatrixScene(admin)
 
     auth.userId = admin
     const tree = await render(scene.project)
-    const section = findSection(tree, QualityMatrixTable)
+    const section = findSection(tree, QualityHeatmap)
 
-    expect(section).toBe(findSection(tree, CriterionQualityTable))
-    expect(section).toBe(findSection(tree, QualityMatrixNotes))
-    expect(
-      typeOrderOf(section, [
-        QualityPanel,
-        CriterionQualityTable,
-        ByDefinition,
-        QualityMatrixTable,
-        QualityMatrixNotes,
-      ]),
-    ).toEqual([
-      QualityPanel,
-      CriterionQualityTable,
-      ByDefinition,
-      QualityMatrixTable,
-      QualityMatrixNotes,
+    expect(section).toBe(findSection(tree, QualityLine))
+    expect(typeOrderOf(section, [QualityLine, QualityHeatmap])).toEqual([
+      QualityLine,
+      QualityHeatmap,
     ])
-
-    const byDefinition = qualityByDefinitionOf(tree)
-    expect(findElement(byDefinition, QualityMatrixTable)).toBeTruthy()
-    expect(findElement(byDefinition, CriterionQualityTable)).toBeNull()
-    expect(findElement(byDefinition, QualityMatrixNotes)).toBeNull()
+    expect(findElement(section, ByDefinition)).toBeNull()
     expect(findElement(section, Disclosure)).toBeNull()
-    expect(summaryOf(byDefinition)).toBe('Por definição (2 definições × 3 critérios)')
+    expect((section!.props as { hint?: unknown }).hint).toBeUndefined()
 
     const markup = renderToStaticMarkup(section!)
-    expect(markup.split('em %')).toHaveLength(2)
-    expect(markup.split('Codebook v1 da rodada')).toHaveLength(2)
     expect(markup.split(HOW_TO_READ_TABLE)).toHaveLength(2)
-
-    expect(Object.keys(criterionQualityOf(tree)).sort()).toEqual([
-      'criteria',
-      'definitions',
-      'excluded',
-      'observations',
-    ])
+    expect(markup).not.toContain('Codebook v1 da rodada')
+    expect(markup).not.toContain('Geral')
+    expect(markup).not.toMatch(/uppercase/)
+    expect(findElement(section, QualityPanel)).toBeNull()
+    expect(markup.split(`>${QUALITY_ALL_DEFINITIONS}<`)).toHaveLength(2)
   })
 
-  it('a tabela por critério da Qualidade soma as notas das definições, e o critério sem nota diz sem nota', async () => {
+  it('a linha Todas do mapa soma as notas das definições, e o critério sem nota diz sem nota', async () => {
     const admin = await newUser('Admin')
     const { scene } = await qualityMatrixScene(admin)
 
     auth.userId = admin
     const tree = await render(scene.project)
-    const table = createElement(CriterionQualityTable, criterionQualityOf(tree))
-    const markup = renderToStaticMarkup(table)
 
-    expect(columnTitlesOf(markup)).toEqual(['Critério', 'Notas'])
-    expect(rowTitlesOf(markup)).toEqual(['Clareza Geral', 'Profundidade', 'Precisão'])
-    expect(criterionQualityTextOf(tree)).toBe(
-      'Critério Notas Clareza Geral 37,5 · 25 · 37,5 Profundidade 25 · 50 · 25 ' +
-        `Precisão ${CELL_UNRATED_LABEL}`,
-    )
-    expect(markup).toContain('title="Alto 37,5% (3) · Médio 25% (2) · Baixo 37,5% (3)"')
-    expect(markup).not.toContain(CELL_NOT_APPLICABLE)
-    expect(qualityCellsOf(tree)[0]).toBe('75 · 0 · 25')
-  })
-
-  it('com alguém marcado, a tabela por critério da Qualidade traz os dois valores, o com todos primeiro', async () => {
-    const admin = await newUser('Admin')
-    const { scene, carla } = await qualityMatrixScene(admin, { carla: true })
-    await addOutlier(ownerDb, scene.round, carla!, admin)
-
-    auth.userId = admin
-    const tree = await render(scene.project)
-
-    expect(criterionQualityOf(tree).excluded).toEqual(new Set([carla]))
-    expect(criterionQualityTextOf(tree)).toBe(
-      `Critério Notas Clareza Geral ${AGREEMENT_ALL_LABEL} 33,3 · 22,2 · 44,4 ` +
-        `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} 37,5 · 25 · 37,5 ` +
-        `Profundidade ${AGREEMENT_ALL_LABEL} 25 · 50 · 25 ` +
-        `${AGREEMENT_WITHOUT_OUTLIERS_LABEL} 25 · 50 · 25 ` +
-        `Precisão ${CELL_UNRATED_LABEL}`,
+    expect(qualityCellsOf(tree).slice(0, 3)).toEqual(['38', '25', CELL_UNRATED_LABEL])
+    expect(qualityCellMarkupsOf(tree)[0]).toContain(
+      'title="Alto 38% (3) · Médio 25% (2) · Baixo 38% (3)"',
     )
   })
 
-  it('a tabela por critério da Qualidade traz o critério por resposta com as notas dele', async () => {
+
+
+  it('com alguém marcado, o critério por resposta traz os dois valores, o com todos primeiro', async () => {
     const admin = await newUser('Admin')
     const scene = await perResponseScene(admin)
+    const carla = await newEvaluator(scene.project, 'Carla')
+    await addEvaluation(ownerDb, scene.round, scene.responses[0], carla, {
+      cells: [note(scene, PER_RESPONSE_LABEL, 'Diversity', 'high')],
+    })
+    await addOutlier(ownerDb, scene.round, carla, admin)
 
     auth.userId = admin
-    const tree = await render(scene.project)
-    const markup = renderToStaticMarkup(
-      createElement(CriterionQualityTable, criterionQualityOf(tree)),
-    )
+    const text = qualityHeatTextOf(await render(scene.project))
 
-    expect(rowTitlesOf(markup)).toEqual(['Relevance Geral', `Diversity ${PER_RESPONSE_LABEL}`])
-    expect(criterionQualityTextOf(tree)).toBe(
-      `Critério Notas Relevance Geral 50 · 0 · 50 Diversity ${PER_RESPONSE_LABEL} 25 · 25 · 50`,
-    )
-    expect(summaryOf(qualityByDefinitionOf(tree))).toBe(
-      'Por definição (5 definições × 2 critérios)',
+    expect(text).toContain(
+      `${QUALITY_PER_RESPONSE_LEAD} Diversity 40% Alto ` +
+        `(${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: 25% Alto)`,
     )
   })
 
-  it('sem definição no codebook da rodada, a Qualidade diz que não há o que cruzar, sem tabela por critério, título por definição nem legenda', async () => {
+  it('sem definição no codebook da rodada, a Qualidade diz que não há o que cruzar, sem mapa nem legenda', async () => {
     const admin = await newUser('Admin')
     const scene = await roundWith(admin, 1, { shape: { definitions: [] }, phase: PHASE_3 })
 
     auth.userId = admin
     const tree = await render(scene.project)
-    const section = findSection(tree, QualityMatrixTable)
+    const section = findSection(tree, QualityHeatmap)
 
     expect(section).toBeTruthy()
-    expect(findElement(section, CriterionQualityTable)).toBeNull()
     expect(findElement(section, ByDefinition)).toBeNull()
-    expect(findElement(section, QualityMatrixNotes)).toBeNull()
-    expect(qualityMatrixTextOf(tree)).toContain('não tem definição e critério para cruzar')
+    const markup = qualityHeatMarkupOf(tree)
+    expect(markup).not.toContain('<table')
+    expect(markup).not.toContain(HOW_TO_READ_TABLE)
+    expect(qualityHeatTextOf(tree)).toContain('não tem definição e critério para cruzar')
   })
 
   it('numa rodada da Fase 3 abaixo da faixa, o Administrador lê que o caminho é refinar o codebook', async () => {
@@ -3380,7 +3304,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     const highTree = await render(high.project)
     const lowTree = await render(low.project)
 
-    expect(qualityPanelOf(highTree).pair.all).toMatchObject({
+    expect(qualityLineOf(highTree).pair.all).toMatchObject({
       rated: true,
       levels: [
         { value: 'high', share: 1 },
@@ -3388,7 +3312,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
         { value: 'low', share: 0 },
       ],
     })
-    expect(qualityPanelOf(lowTree).pair.all).toMatchObject({
+    expect(qualityLineOf(lowTree).pair.all).toMatchObject({
       rated: true,
       levels: [
         { value: 'high', share: 0 },
@@ -3509,10 +3433,10 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
       expect(guidance).toBeTruthy()
 
       const observations = criterionTableOf(tree).observations
-      expect(qualityPanelOf(tree)).toEqual({
+      expect(qualityLineOf(tree)).toEqual({
         pair: qualityPair(observations, new Set<string>()),
       })
-      expect(qualityMatrixOf(tree)).toEqual({
+      expect(qualityHeatOf(tree)).toEqual({
         definitions: criterionTableOf(tree).definitions,
         criteria: criterionTableOf(tree).criteria,
         observations,
@@ -3553,7 +3477,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     const list = blockIndexOf(tree, RoundList)
     const guidance = blockIndexOf(tree, ReadingGuidanceNote)
     const agreement = blockIndexOf(tree, SampleLine)
-    const quality = blockIndexOf(tree, QualityPanel)
+    const quality = blockIndexOf(tree, QualityLine)
     expect(newRound).toBe(0)
     expect(shortcuts).toBe(newRound + 1)
     expect(list).toBe(shortcuts + 1)
@@ -3607,7 +3531,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    expect(findSection(tree, QualityPanel)).toBeNull()
+    expect(findSection(tree, QualityLine)).toBeNull()
     expect(shortcutsOf(tree)?.links).toEqual([
       { href: '#concordancia', label: 'Concordância e confiabilidade' },
       { href: '#rodadas-do-projeto', label: 'Rodadas do projeto (1)' },
@@ -3669,7 +3593,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    const section = findSection(tree, QualityPanel)
+    const section = findSection(tree, QualityLine)
     expect(section).toBeTruthy()
     const markup = renderToStaticMarkup(section!)
     expect(markup).toContain('id="qualidade"')
@@ -3818,9 +3742,9 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(findElement(tree, ReadingGuidanceNote)).toBeNull()
     expect(findElement(tree, SampleLine)).toBeNull()
     expect(findElement(tree, CriterionAgreementTable)).toBeNull()
-    expect(findElement(tree, QualityPanel)).toBeNull()
+    expect(findElement(tree, QualityLine)).toBeNull()
     expect(findElement(tree, AgreementMatrixTable)).toBeNull()
-    expect(findElement(tree, QualityMatrixTable)).toBeNull()
+    expect(findElement(tree, QualityHeatmap)).toBeNull()
   })
 
   it('o membro em onboarding é mandado concluir o onboarding', async () => {
