@@ -1,11 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import * as labels from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
 import {
-  QUALITY_ALL_DEFINITIONS,
   QUALITY_HEAT_CAPTION,
-  QUALITY_HEAT_LEGEND,
   QUALITY_HINT,
-  QUALITY_VIEW_ALL,
   QUALITY_VIEW_RESULT,
   QUALITY_SERIES_HINT,
   QUALITY_SERIES_NOTE,
@@ -19,12 +16,6 @@ import {
   qualityViewWithoutOutliers,
   wholeLevelsText,
 } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
-import {
-  AGREEMENT_ALL_LABEL,
-  AGREEMENT_WITHOUT_OUTLIERS_LABEL,
-  CELL_NOT_APPLICABLE_TITLE,
-  CELL_UNRATED_LABEL,
-} from '@/app/projects/[id]/(tabs)/rounds/agreement-labels'
 
 const JUDGEMENT_WORDS = [
   'boa',
@@ -81,7 +72,6 @@ describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () =
     expect(exportedStrings()).toEqual(
       expect.arrayContaining([
         QUALITY_HEAT_CAPTION,
-        QUALITY_HEAT_LEGEND,
         QUALITY_VIEW_RESULT,
         QUALITY_SERIES_HINT,
         QUALITY_SERIES_NOTE,
@@ -111,23 +101,8 @@ describe('app/projects/[id]/rounds/quality-labels — a Qualidade na tela', () =
     expect(definitionsCoverage(1, 1)).toBe('em 1 de 1 definição')
   })
 
-  it('a legenda do mapa diz o que é a célula, onde está a distribuição, e que sem nota não é 0%', () => {
-    expect(QUALITY_HEAT_CAPTION).toBe(
-      '% de notas Alto em cada definição × critério. Quanto mais escuro, mais Alto.',
-    )
-    expect(QUALITY_HEAT_LEGEND).toContain('ao passar o mouse na célula')
-    expect(QUALITY_HEAT_LEGEND).toContain(`“${QUALITY_ALL_DEFINITIONS}”`)
-    expect(QUALITY_HEAT_LEGEND).toContain('e não da média das células')
-    expect(QUALITY_HEAT_LEGEND).toContain(`“${CELL_UNRATED_LABEL}”`)
-    expect(QUALITY_HEAT_LEGEND).toContain(CELL_NOT_APPLICABLE_TITLE)
-    expect(QUALITY_HEAT_LEGEND).toContain('não vale 0%')
-  })
-
-  it('a legenda do mapa fala do seletor, e não do par em cada célula', () => {
-    expect(QUALITY_HEAT_LEGEND).toContain(`“${QUALITY_VIEW_ALL}”`)
-    expect(QUALITY_HEAT_LEGEND).toContain('seletor no topo da seção')
-    expect(QUALITY_HEAT_LEGEND).not.toContain(AGREEMENT_ALL_LABEL)
-    expect(QUALITY_HEAT_LEGEND).not.toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
+  it('a legenda do mapa diz o que é a célula, sem frase sobre a cor', () => {
+    expect(QUALITY_HEAT_CAPTION).toBe('% de notas Alto em cada definição × critério.')
   })
 
   it('a opção sem outliers diz quantos avaliadores ficam fora', () => {

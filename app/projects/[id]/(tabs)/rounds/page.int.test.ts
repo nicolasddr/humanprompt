@@ -54,9 +54,7 @@ import { HOW_TO_READ_TABLE, HowToRead } from '@/app/projects/[id]/(tabs)/rounds/
 import { QualityPanel, QualitySummary } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
 import {
   QUALITY_ALL_DEFINITIONS,
-  QUALITY_HEAT_LEGEND,
   QUALITY_NOT_APPLICABLE,
-  QUALITY_PER_RESPONSE_LEAD,
   QUALITY_UNRATED,
   QUALITY_UNRATED_WITHOUT_OUTLIERS,
   QUALITY_VIEW_ALL,
@@ -85,7 +83,6 @@ import {
   CONCENTRATED_LABEL,
   CONCENTRATION_HELP,
   criterionTabTitle,
-  matrixVersionNote,
 } from '@/app/projects/[id]/(tabs)/rounds/agreement-labels'
 import { Section } from '@/app/components/ui/section'
 import { Disclosure } from '@/app/components/ui/disclosure'
@@ -2072,14 +2069,14 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
       ],
     })
 
-    expect(qualityTextOf(tree)).toBe('8 notas 63% Alto 25% Médio 13% Baixo')
+    expect(qualityTextOf(tree)).toBe('63% Alto 25% Médio 13% Baixo 8 notas')
     expect(renderToStaticMarkup(createElement(QualityLine, qualityLineOf(tree)))).toContain(
       'title="Alto 63% (5) · Médio 25% (2) · Baixo 13% (1)"',
     )
 
     const section = findSection(tree, QualityLine)
     expect(textOf((section!.props as { title: ReactNode }).title)).toBe(
-      'Qualidade na rodada 1, fechada',
+      'Qualidade - Rodada 1',
     )
   })
 
@@ -2173,7 +2170,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     )
 
     expect(qualityLineOf(tree).quality).toMatchObject({ rated: true, total: 8 })
-    expect(qualityTextOf(tree)).toBe('8 notas 63% Alto 25% Médio 13% Baixo')
+    expect(qualityTextOf(tree)).toBe('63% Alto 25% Médio 13% Baixo 8 notas')
     expect(qualityHeatOf(tree).observations).toHaveLength(8)
 
     const summary = findElement(RoundList(listOf(tree)), QualitySummary)!
@@ -2209,7 +2206,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
         { value: 'low', count: 0, share: 0 },
       ],
     })
-    expect(qualityTextOf(tree)).toBe('4 notas 75% Alto 25% Médio 0% Baixo')
+    expect(qualityTextOf(tree)).toBe('75% Alto 25% Médio 0% Baixo 4 notas')
     expect(qualityHeatOf(tree).observations).toHaveLength(4)
     expect(qualityTextOf(tree)).not.toContain(AGREEMENT_ALL_LABEL)
   })
@@ -2223,7 +2220,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     auth.userId = admin
     const tree = await render(scene.project)
 
-    expect(qualityTextOf(tree)).toContain('8 notas 63% Alto')
+    expect(qualityTextOf(tree)).toContain('63% Alto 25% Médio 13% Baixo 8 notas')
 
     const without = await render(scene.project, { qualidade: 'sem-outliers' })
     expect(qualityLineOf(without).quality).toEqual({ rated: false, total: 0 })
@@ -2322,7 +2319,8 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(text.indexOf('Clareza')).toBeLessThan(text.indexOf('Profundidade'))
     expect(text.indexOf('Profundidade')).toBeLessThan(text.indexOf('Precisão'))
     expect(text).toContain('% de notas Alto em cada definição × critério.')
-    expect(text).not.toContain(QUALITY_PER_RESPONSE_LEAD)
+    expect(text).not.toContain('Quanto mais escuro')
+    expect(text).not.toContain(PER_RESPONSE_LABEL)
     expect(text).not.toContain('Codebook v1 da rodada')
   })
 
@@ -2351,11 +2349,10 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
 
     const heat = QualityHeatmap(qualityHeatOf(tree))
     expect(tooltipTextsOf(heat)).toEqual([])
-    expect(howToReadOf(heat)).toEqual([[matrixVersionNote(1), QUALITY_HEAT_LEGEND]])
+    expect(howToReadOf(heat)).toEqual([])
 
     const element = createElement(QualityHeatmap, qualityHeatOf(tree))
-    expect(renderToStaticMarkup(element)).toContain(HOW_TO_READ_TABLE)
-    expect(opensClosed(element)).toBe(true)
+    expect(renderToStaticMarkup(element)).not.toContain(HOW_TO_READ_TABLE)
     expect(glanceTextOf(element)).not.toContain('vigente')
   })
 
@@ -2494,7 +2491,6 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(text).toContain('Clareza')
     expect(text).not.toContain('Navegacional')
     expect(text).not.toContain('Profundidade')
-    expect(text).toContain(matrixVersionNote(1))
   })
 
   it('a matriz de Qualidade não usa cor de juízo em nenhum elemento', async () => {
@@ -3145,7 +3141,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(summaryOf(byDefinitionOf(tree))).toBe('Por definição (5 definições × 1 critério)')
   })
 
-  it('a matriz de Qualidade deixa o critério por resposta de fora, e ele aparece uma vez só, na frase de baixo', async () => {
+  it('a matriz de Qualidade traz o critério por resposta como coluna, com a linha Por resposta no final', async () => {
     const admin = await newUser('Admin')
     const scene = await perResponseScene(admin)
 
@@ -3160,20 +3156,24 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
       'Query 3',
       'Query 4',
       'Query 5',
+      PER_RESPONSE_LABEL,
     ])
-    expect(columnTitlesOf(markup)).toEqual(['Relevance'])
-    expect(qualityCellsOf(tree)).toEqual(['50', '50', '50', '50', '50', '50'])
+    expect(columnTitlesOf(markup)).toEqual(['Relevance', 'Diversity'])
+    const definitionRow = ['50', QUALITY_NOT_APPLICABLE]
+    expect(qualityCellsOf(tree)).toEqual([
+      ...Array.from({ length: 6 }, () => definitionRow).flat(),
+      QUALITY_NOT_APPLICABLE,
+      '25',
+    ])
+    expect(qualityCellTipOf(qualityCellMarkupsOf(tree)[13])).toBe(
+      'Alto 25% (1) · Médio 25% (1) · Baixo 50% (2)',
+    )
 
-    const text = qualityHeatTextOf(tree)
-    expect(text).toContain(`${QUALITY_PER_RESPONSE_LEAD} Diversity 25% Alto`)
-    expect(text.split('Diversity')).toHaveLength(2)
-    expect(text).not.toContain(PER_RESPONSE_LABEL)
-    expect(markup).toContain('title="Alto 25% (1) · Médio 25% (1) · Baixo 50% (2)"')
-    expect(titleCountOf(markup, CELL_PER_RESPONSE_ROW_TITLE)).toBe(0)
-    expect(titleCountOf(markup, CELL_PER_RESPONSE_COLUMN_TITLE)).toBe(0)
-    expect(howToReadOf(QualityHeatmap(qualityHeatOf(tree)))).toEqual([
-      [matrixVersionNote(1), QUALITY_HEAT_LEGEND],
-    ])
+    expect(qualityHeatTextOf(tree).split('Diversity')).toHaveLength(2)
+    expect(qualityHeatTextOf(tree)).not.toContain('Avaliados por resposta')
+    expect(titleCountOf(markup, CELL_PER_RESPONSE_ROW_TITLE)).toBe(1)
+    expect(titleCountOf(markup, CELL_PER_RESPONSE_COLUMN_TITLE)).toBe(6)
+    expect(howToReadOf(QualityHeatmap(qualityHeatOf(tree)))).toEqual([])
   })
 
   it('sem critério por resposta, as matrizes não ganham o parágrafo nem os traços novos', async () => {
@@ -3193,7 +3193,6 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
       expect(titleCountOf(markup, CELL_PER_RESPONSE_COLUMN_TITLE)).toBe(0)
       expect(rowTitlesOf(markup)).not.toContain(PER_RESPONSE_LABEL)
     }
-    expect(qualityHeatTextOf(tree)).not.toContain(QUALITY_PER_RESPONSE_LEAD)
   })
 
   it('a Qualidade abre com a linha do resumo e o mapa logo abaixo, sem cartão, selo, caixa alta nem subtítulo', async () => {
@@ -3214,7 +3213,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect((section!.props as { hint?: unknown }).hint).toBeUndefined()
 
     const markup = renderToStaticMarkup(section!)
-    expect(markup.split(HOW_TO_READ_TABLE)).toHaveLength(2)
+    expect(markup).not.toContain(HOW_TO_READ_TABLE)
     expect(markup).not.toContain('Codebook v1 da rodada')
     expect(markup).not.toContain('Geral')
     expect(markup).not.toMatch(/uppercase/)
@@ -3247,14 +3246,13 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     await addOutlier(ownerDb, scene.round, carla, admin)
 
     auth.userId = admin
-    const text = qualityHeatTextOf(await render(scene.project))
-    expect(text).toContain(`${QUALITY_PER_RESPONSE_LEAD} Diversity 40% Alto Como ler`)
-    expect(text).not.toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
+    const tree = await render(scene.project)
+    expect(qualityCellsOf(tree).at(-1)).toBe('40')
+    expect(qualityHeatTextOf(tree).split('Diversity')).toHaveLength(2)
+    expect(qualityHeatTextOf(tree)).not.toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
 
-    const without = qualityHeatTextOf(
-      await render(scene.project, { qualidade: 'sem-outliers' }),
-    )
-    expect(without).toContain(`${QUALITY_PER_RESPONSE_LEAD} Diversity 25% Alto Como ler`)
+    const without = await render(scene.project, { qualidade: 'sem-outliers' })
+    expect(qualityCellsOf(without).at(-1)).toBe('25')
   })
 
   it('sem definição no codebook da rodada, a Qualidade diz que não há o que cruzar, sem mapa nem legenda', async () => {

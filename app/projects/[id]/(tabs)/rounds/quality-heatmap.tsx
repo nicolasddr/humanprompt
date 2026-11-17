@@ -5,27 +5,20 @@ import type {
   CodebookDefinition,
 } from '../../pipeline/codebook'
 import type { RoundObservation } from './agreement'
+import { PER_RESPONSE_LABEL } from '../../pipeline/criteria'
+import { PER_RESPONSE_KEY } from '../evaluate/completeness'
 import type { MatrixColumn, MeasuredCell } from './agreement-matrix'
-import {
-  CELL_NOT_APPLICABLE_TITLE,
-  CELL_UNRATED_LABEL,
-  matrixVersionNote,
-} from './agreement-labels'
-import { HowToRead } from './how-to-read'
+import { CELL_UNRATED_LABEL, cellNotApplicableTitle } from './agreement-labels'
 import { HeatTipCell } from './quality-heat-tip-cell'
 import { qualityByCriterion, qualityMatrix, type Quality, type QualityPair } from './quality'
 import {
   QUALITY_ALL_DEFINITIONS,
   QUALITY_HEAT_CAPTION,
-  QUALITY_HEAT_LEGEND,
   QUALITY_NOT_APPLICABLE,
-  QUALITY_PER_RESPONSE_LEAD,
   definitionsCoverage,
   wholeLevelText,
-  wholeLevelsText,
 } from './quality-labels'
-import { formatWholeShare, wholeShareNumber } from './share'
-import { scaleLabel } from '../evaluate/scale'
+import { wholeShareNumber } from './share'
 
 const SCALE_STEPS = [0, 0.25, 0.5, 0.75, 1]
 
@@ -48,10 +41,6 @@ function highOf(quality: Quality) {
   return quality.rated ? quality.levels[0] : null
 }
 
-function levelsTitle(quality: Quality): string | undefined {
-  return quality.rated ? wholeLevelsText(quality.levels) : undefined
-}
-
 function levelLines(quality: Quality): string[] {
   return quality.rated ? quality.levels.map(wholeLevelText) : []
 }
@@ -60,11 +49,17 @@ const NONE: ReadonlySet<string> = new Set<string>()
 
 const cellClass = 'h-8 min-w-16 rounded-[5px] px-2 text-center align-middle tabular-nums'
 
-function HeatCell({ cell }: { cell: MeasuredCell<QualityPair> }) {
+function HeatCell({
+  cell,
+  notApplicableTitle,
+}: {
+  cell: MeasuredCell<QualityPair>
+  notApplicableTitle: string
+}) {
   if (cell.state === 'not_applicable') {
     return (
       <td
-        title={CELL_NOT_APPLICABLE_TITLE}
+        title={notApplicableTitle}
         className={cx(
           cellClass,
           'bg-[repeating-linear-gradient(45deg,var(--color-canvas),var(--color-canvas)_4px,var(--color-line)_4px,var(--color-line)_8px)]',
@@ -133,36 +128,12 @@ function ColumnHeader({
       className="px-0.5 pb-1 text-center align-bottom text-xs font-semibold text-label"
     >
       <span className="block whitespace-nowrap">{column.name}</span>
-      {!column.isGeneral && coverage < definitions ? (
+      {!column.isGeneral && !column.isPerResponse && coverage < definitions ? (
         <span className="mx-auto block max-w-20 text-[11px] leading-tight font-normal text-muted">
           {definitionsCoverage(coverage, definitions)}
         </span>
       ) : null}
     </th>
-  )
-}
-
-function PerResponseValue({
-  column,
-  cell,
-}: {
-  column: MatrixColumn<CodebookCriterion>
-  cell: MeasuredCell<QualityPair>
-}) {
-  const high = cell.state === 'measured' ? highOf(cell.value.all) : null
-
-  return (
-    <span title={cell.state === 'measured' ? levelsTitle(cell.value.all) : undefined}>
-      {column.name}{' '}
-      {high ? (
-        <span className={cx(high.count === 0 && 'text-faint')}>
-          <span className="font-semibold">{formatWholeShare(high.share)}</span>{' '}
-          {scaleLabel(high.value)}
-        </span>
-      ) : (
-        <span className="text-muted">{CELL_UNRATED_LABEL}</span>
-      )}
-    </span>
   )
 }
 
@@ -187,86 +158,61 @@ export function QualityHeatmap({
   }
 
   const totals = qualityByCriterion(definitions, criteria, observations, NONE)
-  const heatTotals = totals.filter(({ column }) => !column.isPerResponse)
-  const perResponse = totals.filter(({ column }) => column.isPerResponse)
-  const rows = qualityMatrix(definitions, criteria, observations, NONE).flatMap((row) =>
-    row.definition
-      ? [
-          {
-            definition: row.definition,
-            cells: row.cells.filter(({ column }) => !column.isPerResponse),
-          },
-        ]
-      : [],
-  )
+  const rows = qualityMatrix(definitions, criteria, observations, NONE)
 
   return (
     <div className="flex flex-col gap-3">
-      {heatTotals.length > 0 ? (
-        <>
-          <p className="m-0 text-xs text-muted">
-            {QUALITY_HEAT_CAPTION}
-            <HeatScale />
-          </p>
+      <p className="m-0 text-xs text-muted">
+        {QUALITY_HEAT_CAPTION}
+        <HeatScale />
+      </p>
 
-          <div className="overflow-x-auto">
-            <table className="border-separate border-spacing-[3px] text-[13px]">
-              <thead>
-                <tr>
-                  <td />
-                  {heatTotals.map(({ column }) => (
-                    <ColumnHeader
-                      key={column.key}
-                      column={column}
-                      definitions={definitions.length}
-                    />
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <th
-                    scope="row"
-                    className="pr-3 text-left font-bold whitespace-nowrap text-ink"
-                  >
-                    {QUALITY_ALL_DEFINITIONS}
-                  </th>
-                  {heatTotals.map(({ column, cell }) => (
-                    <HeatCell key={column.key} cell={cell} />
-                  ))}
-                </tr>
-                {rows.map(({ definition, cells }) => (
-                  <tr key={definition.id}>
-                    <th
-                      scope="row"
-                      className="pr-3 text-left font-semibold whitespace-nowrap text-label"
-                    >
-                      {definition.title}
-                    </th>
-                    {cells.map(({ column, cell }) => (
-                      <HeatCell key={column.key} cell={cell} />
-                    ))}
-                  </tr>
+      <div className="overflow-x-auto">
+        <table className="border-separate border-spacing-[3px] text-[13px]">
+          <thead>
+            <tr>
+              <td />
+              {totals.map(({ column }) => (
+                <ColumnHeader key={column.key} column={column} definitions={definitions.length} />
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" className="pr-3 text-left font-bold whitespace-nowrap text-ink">
+                {QUALITY_ALL_DEFINITIONS}
+              </th>
+              {totals.map(({ column, cell }) => (
+                <HeatCell
+                  key={column.key}
+                  cell={column.isPerResponse ? { state: 'not_applicable' } : cell}
+                  notApplicableTitle={cellNotApplicableTitle(false, column.isPerResponse)}
+                />
+              ))}
+            </tr>
+            {rows.map(({ definition, cells }) => (
+              <tr key={definition?.id ?? PER_RESPONSE_KEY}>
+                <th
+                  scope="row"
+                  className="pr-3 text-left font-semibold whitespace-nowrap text-label"
+                >
+                  {definition?.title ?? PER_RESPONSE_LABEL}
+                </th>
+                {cells.map(({ column, cell }) => (
+                  <HeatCell
+                    key={column.key}
+                    cell={cell}
+                    notApplicableTitle={cellNotApplicableTitle(
+                      definition === null,
+                      column.isPerResponse,
+                    )}
+                  />
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      ) : null}
-
-      {perResponse.length > 0 ? (
-        <p className="m-0 text-sm text-label tabular-nums">
-          {QUALITY_PER_RESPONSE_LEAD}{' '}
-          {perResponse.map(({ column, cell }, index) => (
-            <span key={column.key}>
-              {index > 0 ? <span className="text-faint"> · </span> : null}
-              <PerResponseValue column={column} cell={cell} />
-            </span>
-          ))}
-        </p>
-      ) : null}
-
-      <HowToRead paragraphs={[matrixVersionNote(codebookVersionNumber), QUALITY_HEAT_LEGEND]} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

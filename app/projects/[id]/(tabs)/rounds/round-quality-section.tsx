@@ -12,9 +12,7 @@ import { QUALITY_SECTION_ID } from './reading-guidance'
 import type { AgreementRound } from './round-agreement-section'
 
 export function qualitySectionTitle(round: AgreementRound): string {
-  return round.closedAt
-    ? `Qualidade na rodada ${round.roundNumber}, fechada`
-    : `Qualidade na rodada ${round.roundNumber}`
+  return `Qualidade - Rodada ${round.roundNumber}`
 }
 
 export function roundQualitySection({

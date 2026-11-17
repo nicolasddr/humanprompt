@@ -1706,7 +1706,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
 
     const section = sectionWith(tree, QualityPanel)
     expect((section!.props as { title: unknown }).title).toBe(
-      'Qualidade na rodada 1, fechada',
+      'Qualidade - Rodada 1',
     )
     expect((section!.props as SectionProps).help).toBeUndefined()
     expect((section!.props as SectionProps).more).toBeUndefined()
@@ -1755,7 +1755,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
 
     const page = deepText(tree)
     expect(page.indexOf('Confiabilidade por rodada')).toBeLessThan(page.indexOf('Abrir rodadas →'))
-    expect(page.indexOf('Qualidade na rodada 2')).toBeLessThan(page.indexOf('Abrir rodadas →'))
+    expect(page.indexOf('Qualidade - Rodada 2')).toBeLessThan(page.indexOf('Abrir rodadas →'))
   })
 
   it('a visão geral não mostra Qualidade quando a rodada em foco é da Fase 2, mesmo com o projeto na Fase 3', async () => {
@@ -2121,7 +2121,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
       expect(roundsLinksOf(tree, project)).toHaveLength(0)
       const page = deepText(tree)
       expect(page).not.toContain('Confiabilidade por rodada')
-      expect(page).not.toContain('Qualidade na rodada')
+      expect(page).not.toContain('Qualidade - Rodada')
       expect(page).not.toContain('Qualidade por rodada')
     }
   })

@@ -9,7 +9,6 @@ export function QualityLine({ quality, unrated }: { quality: Quality; unrated: s
       <p className="m-0 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink tabular-nums">
         {quality.rated ? (
           <>
-            <span className="font-semibold">{qualityTotal(quality.total)}</span>
             {quality.levels.map((level) => (
               <span
                 key={level.value}
@@ -19,6 +18,7 @@ export function QualityLine({ quality, unrated }: { quality: Quality; unrated: s
                 {levelShareText(level)}
               </span>
             ))}
+            <span className="font-semibold">{qualityTotal(quality.total)}</span>
           </>
         ) : (
           <span className="text-muted">{unrated}</span>

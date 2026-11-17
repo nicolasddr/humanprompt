@@ -528,11 +528,7 @@ export default async function ProjectPage({
 
           {focus && focusQuality ? (
             <Section
-              title={
-                focus.closedAt
-                  ? `Qualidade na rodada ${focus.roundNumber}, fechada`
-                  : `Qualidade na rodada ${focus.roundNumber}`
-              }
+              title={`Qualidade - Rodada ${focus.roundNumber}`}
               hint={QUALITY_HINT}
             >
               <QualityPanel pair={focusQuality} />
