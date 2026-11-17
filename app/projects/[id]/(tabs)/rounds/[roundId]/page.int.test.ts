@@ -43,7 +43,7 @@ import {
 import { SampleLine } from '@/app/projects/[id]/(tabs)/rounds/agreement-panel'
 import { CriterionAgreementTable } from '@/app/projects/[id]/(tabs)/rounds/criterion-agreement-table'
 import { AgreementMatrixTable } from '@/app/projects/[id]/(tabs)/rounds/agreement-matrix-table'
-import { QualityPanel, QualityValue } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
+import { QualityValue } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
 import { scaleLabel } from '@/app/projects/[id]/(tabs)/evaluate/scale'
 import {
   AdminResponseCard,
@@ -1514,7 +1514,6 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     expect(listTextOf(tree)).toContain(scaleLabel('low'))
     expect(text).not.toContain('Qualidade')
     expect(text).not.toContain('%')
-    expect(findElement(tree, QualityPanel)).toBeNull()
     expect(findElement(tree, QualityValue)).toBeNull()
   })
 

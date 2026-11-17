@@ -1,11 +1,6 @@
-import { Badge } from '@/app/components/ui/badge'
-import { Disclosure } from '@/app/components/ui/disclosure'
-import { formatDate } from '@/app/notifications/labels'
 import { SCALE, scaleLabel, type ScaleValue } from '../evaluate/scale'
 import type { Quality } from './quality'
-import { QualityValue } from './quality-panel'
 import {
-  QUALITY_SERIES_NUMBERS,
   QUALITY_UNRATED,
   QUALITY_UNRATED_WITHOUT_OUTLIERS,
   levelsText,
@@ -67,51 +62,23 @@ function pointLabel(point: QualitySeriesPoint): string {
     : label
 }
 
-function PointStatus({ point }: { point: QualitySeriesPoint }) {
-  return point.closedAt ? (
-    <span>fechada em {formatDate(point.closedAt)}</span>
-  ) : (
-    <Badge tone="info">Aberta</Badge>
-  )
-}
-
 export function QualitySeriesChart({ points }: { points: readonly QualitySeriesPoint[] }) {
   return (
-    <div className="flex flex-col gap-3">
-      <LineSeriesChart
-        points={points}
-        grid={GRID}
-        ticks={TICKS}
-        lines={SCALE.map((value) => ({
-          key: value,
-          label: scaleLabel(value),
-          name: scaleLabel(value),
-          strokeClass: LINE_COLOR[value].stroke,
-          swatchClass: LINE_COLOR[value].swatch,
-          values: points.map((point) => shareOf(point.pair.all, value)),
-          texts: points.map((point) => shareText(point.pair.all, value)),
-        }))}
-        pointLabel={(index) => pointLabel(points[index])}
-        pointNotes={(index) => pointNotes(points[index])}
-      />
-
-      <Disclosure summary={QUALITY_SERIES_NUMBERS}>
-        <ul className="m-0 mt-2 flex list-none flex-col gap-2.5 p-0">
-          {points.map((point) => (
-            <li key={point.roundId}>
-              <p className="m-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted">
-                <span className="font-semibold text-ink">Rodada {point.roundNumber}</span>
-                <span>
-                  Codebook v{point.codebookVersionNumber} · Prompt v{point.promptVersionNumber}{' '}
-                  · Fase {point.phase}
-                </span>
-                <PointStatus point={point} />
-              </p>
-              <QualityValue pair={point.pair} />
-            </li>
-          ))}
-        </ul>
-      </Disclosure>
-    </div>
+    <LineSeriesChart
+      points={points}
+      grid={GRID}
+      ticks={TICKS}
+      lines={SCALE.map((value) => ({
+        key: value,
+        label: scaleLabel(value),
+        name: scaleLabel(value),
+        strokeClass: LINE_COLOR[value].stroke,
+        swatchClass: LINE_COLOR[value].swatch,
+        values: points.map((point) => shareOf(point.pair.all, value)),
+        texts: points.map((point) => shareText(point.pair.all, value)),
+      }))}
+      pointLabel={(index) => pointLabel(points[index])}
+      pointNotes={(index) => pointNotes(points[index])}
+    />
   )
 }

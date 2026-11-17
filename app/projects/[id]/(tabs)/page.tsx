@@ -31,7 +31,6 @@ import { FROZEN_BADGE_HELP, FROZEN_BADGE_LABEL } from '../pipeline/freeze'
 import {
   listRounds,
   isOpen,
-  focusRoundOf,
   roundsInPhase,
   type RoundSummary,
 } from './rounds/rounds'
@@ -55,11 +54,7 @@ import {
   CONCORDANCE_SERIES_TITLE,
 } from './rounds/concordance-series-labels'
 import { hasQuality, qualityPair, type QualityPair } from './rounds/quality'
-import {
-  QUALITY_HINT,
-  QUALITY_SERIES_HINT,
-} from './rounds/quality-labels'
-import { QualityPanel } from './rounds/quality-panel'
+import { QUALITY_SERIES_HINT } from './rounds/quality-labels'
 import { qualitySeries } from './rounds/quality-series'
 import { QualitySeriesChart } from './rounds/quality-series-chart'
 import { SubmitButton } from '@/app/components/submit-button'
@@ -280,15 +275,6 @@ export default async function ProjectPage({
     ? concordanceSeries(agreement.rounds, agreement.observations)
     : []
 
-  const focus = agreement ? focusRoundOf(agreement.rounds) : null
-  const focusQuality =
-    agreement && focus && hasQuality(focus.phase)
-      ? qualityPair(
-          agreement.observations.get(focus.id) ?? [],
-          agreement.outliers.get(focus.id) ?? new Set(),
-        )
-      : null
-
   const qualityPoints = agreement
     ? qualitySeries(agreement.rounds, agreement.observations, agreement.outliers)
     : []
@@ -504,15 +490,6 @@ export default async function ProjectPage({
               help={CONCORDANCE_SERIES_HINT}
             >
               <ConcordanceSeriesChart points={concordancePoints} />
-            </Section>
-          ) : null}
-
-          {focus && focusQuality ? (
-            <Section
-              title={`Qualidade - Rodada ${focus.roundNumber}`}
-              hint={QUALITY_HINT}
-            >
-              <QualityPanel pair={focusQuality} />
             </Section>
           ) : null}
 

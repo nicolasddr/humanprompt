@@ -1,6 +1,4 @@
-import { plural } from '@/lib/plural'
 import type { Quality, QualityPair } from './quality'
-import { QualityBar, QualityLegend } from './quality-bar'
 import {
   QUALITY_LABEL,
   QUALITY_UNRATED,
@@ -8,72 +6,7 @@ import {
   levelsText,
   qualityTotal,
 } from './quality-labels'
-import {
-  AGREEMENT_ALL_LABEL,
-  AGREEMENT_WITHOUT_OUTLIERS_LABEL,
-  OUTLIER_PAIR_RESULT,
-  OUTLIER_PAIR_SUMMARY,
-} from './agreement-labels'
-import { StatCard } from '@/app/components/ui/stat'
-import { InfoTooltip } from '@/app/components/ui/tooltip'
-
-function qualityText(quality: Quality, unrated: string): string {
-  return quality.rated ? qualityTotal(quality.total) : unrated
-}
-
-function QualityStat({
-  label,
-  quality,
-  unrated,
-  hint,
-}: {
-  label: string
-  quality: Quality
-  unrated: string
-  hint?: React.ReactNode
-}) {
-  return (
-    <StatCard label={label} value={qualityText(quality, unrated)} hint={hint}>
-      {quality.rated ? (
-        <>
-          <QualityBar levels={quality.levels} />
-          <QualityLegend levels={quality.levels} />
-        </>
-      ) : null}
-    </StatCard>
-  )
-}
-
-export function QualityPanel({ pair }: { pair: QualityPair }) {
-  const { all, withoutOutliers } = pair
-
-  if (!withoutOutliers) {
-    return <QualityStat label={QUALITY_LABEL} quality={all} unrated={QUALITY_UNRATED} />
-  }
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <QualityStat
-          label={`${QUALITY_LABEL} — ${AGREEMENT_ALL_LABEL}`}
-          quality={all}
-          unrated={QUALITY_UNRATED}
-        />
-        <QualityStat
-          label={`${QUALITY_LABEL} — ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`}
-          quality={withoutOutliers}
-          unrated={QUALITY_UNRATED_WITHOUT_OUTLIERS}
-          hint={plural(pair.excluded, 'avaliador fora', 'avaliadores fora')}
-        />
-      </div>
-
-      <p className="m-0 flex flex-wrap items-center gap-2 text-xs text-muted">
-        <span>{OUTLIER_PAIR_RESULT}</span>
-        <InfoTooltip text={OUTLIER_PAIR_SUMMARY} />
-      </p>
-    </div>
-  )
-}
+import { AGREEMENT_ALL_LABEL, AGREEMENT_WITHOUT_OUTLIERS_LABEL } from './agreement-labels'
 
 function distributionText(quality: Quality, unrated: string): string {
   if (!quality.rated) return unrated

@@ -6,9 +6,6 @@ export type QualitySeriesPoint = {
   roundId: string
   roundNumber: number
   phase: number
-  codebookVersionNumber: number
-  promptVersionNumber: number
-  closedAt: string | null
   pair: QualityPair
 }
 
@@ -23,9 +20,6 @@ export function qualitySeries(
       roundId: round.id,
       roundNumber: round.roundNumber,
       phase: round.phase,
-      codebookVersionNumber: round.codebookVersionNumber,
-      promptVersionNumber: round.promptVersionNumber,
-      closedAt: round.closedAt,
       pair: qualityPair(
         observations.get(round.id) ?? [],
         outliers.get(round.id) ?? new Set<string>(),

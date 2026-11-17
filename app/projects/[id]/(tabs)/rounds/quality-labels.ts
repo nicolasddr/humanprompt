@@ -10,10 +10,6 @@ export const QUALITY_UNRATED = 'ainda não há notas'
 
 export const QUALITY_UNRATED_WITHOUT_OUTLIERS = 'não sobra nota depois da exclusão'
 
-export const QUALITY_HINT =
-  `A distribuição das notas desta rodada entre ${scaleLabel('high')}, ` +
-  `${scaleLabel('medium')} e ${scaleLabel('low')}.`
-
 export const QUALITY_ALL_DEFINITIONS = 'Todas'
 
 export const QUALITY_NOT_APPLICABLE = 'não se aplica'
@@ -35,8 +31,6 @@ export const QUALITY_VIEW_RESULT =
 
 export const QUALITY_SERIES_HINT =
   `A distribuição das notas de cada rodada das Fases ${PHASE_3} e ${PHASE_4}, um ponto por rodada.`
-
-export const QUALITY_SERIES_NUMBERS = 'Ver os números de cada rodada'
 
 export { formatShare, formatWholeShare }
 

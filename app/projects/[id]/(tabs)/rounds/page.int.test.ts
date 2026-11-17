@@ -52,7 +52,6 @@ import { Tab, TabList } from '@/app/components/ui/tabs'
 import { QualityHeatmap } from '@/app/projects/[id]/(tabs)/rounds/quality-heatmap'
 import { QualityLine } from '@/app/projects/[id]/(tabs)/rounds/quality-line'
 import { HOW_TO_READ_TABLE, HowToRead } from '@/app/projects/[id]/(tabs)/rounds/how-to-read'
-import { QualityPanel } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
 import {
   QUALITY_ALL_DEFINITIONS,
   QUALITY_NOT_APPLICABLE,
@@ -3101,7 +3100,6 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(markup).not.toContain('Codebook v1 da rodada')
     expect(markup).not.toContain('Geral')
     expect(markup).not.toMatch(/uppercase/)
-    expect(findElement(section, QualityPanel)).toBeNull()
     expect(markup.split(`>${QUALITY_ALL_DEFINITIONS}<`)).toHaveLength(2)
   })
 

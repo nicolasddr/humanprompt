@@ -100,23 +100,6 @@ describe('qualitySeries — um ponto por rodada das Fases 3 e 4, sem agregação
     expect(points.map((point) => point.roundId)).toEqual(['c', 'a', 'b'])
   })
 
-  it('cada ponto traz as versões de codebook e de prompt da própria rodada', () => {
-    const rounds = [
-      round('a', 1, 3, {
-        codebookVersionNumber: 2,
-        promptVersionNumber: 3,
-        closedAt: '2026-02-01T00:00:00.000Z',
-      }),
-      round('b', 2, 3, { codebookVersionNumber: 3, promptVersionNumber: 5 }),
-    ]
-
-    const points = qualitySeries(rounds, new Map(), NO_OUTLIERS)
-
-    expect(points.map((point) => point.codebookVersionNumber)).toEqual([2, 3])
-    expect(points.map((point) => point.promptVersionNumber)).toEqual([3, 5])
-    expect(points.map((point) => point.closedAt)).toEqual(['2026-02-01T00:00:00.000Z', null])
-  })
-
   it('a rodada da Fase 3 sem nota vira ponto sem nota, e não some da série', () => {
     const points = qualitySeries([round('a', 1, 3)], new Map(), NO_OUTLIERS)
 

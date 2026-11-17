@@ -63,13 +63,9 @@ import { ConcordanceSeriesChart } from '@/app/projects/[id]/(tabs)/rounds/concor
 import {
   CONCORDANCE_SERIES_HINT,
 } from '@/app/projects/[id]/(tabs)/rounds/concordance-series-labels'
-import { QualityPanel } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
 import { QualityLine } from '@/app/projects/[id]/(tabs)/rounds/quality-line'
 import { QualitySeriesChart } from '@/app/projects/[id]/(tabs)/rounds/quality-series-chart'
-import {
-  QUALITY_SERIES_HINT,
-  QUALITY_SERIES_NUMBERS,
-} from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
+import { QUALITY_SERIES_HINT } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
 import { phaseRuns } from '@/app/projects/[id]/(tabs)/rounds/agreement-series'
 import { QualityHeatmap } from '@/app/projects/[id]/(tabs)/rounds/quality-heatmap'
 import { Section } from '@/app/components/ui/section'
@@ -220,7 +216,6 @@ type Phase3Props = Parameters<typeof Phase3Checklist>[0]
 type TabsProps = Parameters<typeof ProjectTabs>[0]
 type AdvanceProps = Parameters<typeof AdvancePhase>[0]
 type SeriesProps = Parameters<typeof AgreementSeriesChart>[0]
-type QualityProps = Parameters<typeof QualityPanel>[0]
 type QualitySeriesProps = Parameters<typeof QualitySeriesChart>[0]
 
 type ScaleValue = NonNullable<CellFixture['value']>
@@ -378,19 +373,6 @@ function roundsQualityOf(tree: unknown): Parameters<typeof QualityLine>[0]['qual
   return (element!.props as Parameters<typeof QualityLine>[0]).quality
 }
 
-function qualityOf(tree: unknown): QualityProps {
-  const element = findElement(tree, QualityPanel)
-  expect(element).toBeTruthy()
-  return element!.props as QualityProps
-}
-
-function qualityTextOf(tree: unknown): string {
-  return renderToStaticMarkup(createElement(QualityPanel, qualityOf(tree)))
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
 function qualitySeriesOf(tree: unknown): QualitySeriesProps {
   const element = findElement(tree, QualitySeriesChart)
   expect(element).toBeTruthy()
@@ -406,17 +388,6 @@ function textOfMarkup(markup: string): string {
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-}
-
-function qualitySeriesTextOf(tree: unknown): string {
-  return textOfMarkup(qualitySeriesMarkupOf(tree))
-}
-
-function qualitySeriesPartsOf(tree: unknown): { chart: string; numbers: string } {
-  const markup = qualitySeriesMarkupOf(tree)
-  const split = markup.indexOf('<details')
-  expect(split).toBeGreaterThan(0)
-  return { chart: markup.slice(0, split), numbers: markup.slice(split) }
 }
 
 type SectionProps = Parameters<typeof Section>[0]
@@ -1643,56 +1614,6 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(page).not.toContain('Confiabilidade')
   })
 
-  it('o Administrador vê a Qualidade da rodada da Fase 3 na visão geral, com os valores da tela de rodadas', async () => {
-    const admin = await newUser('Admin')
-    const project = await newProject(admin, PHASE_3)
-    const ana = await addActiveEvaluator(ownerDb, project, await newUser('Ana'))
-    const bruno = await addActiveEvaluator(ownerDb, project, await newUser('Bruno'))
-    const promptVersion = await addPromptVersion(ownerDb, project, admin)
-
-    await roundWith(project, admin, promptVersion, {
-      roundNumber: 1,
-      versionNumber: 1,
-      phase: PHASE_3,
-      byEvaluator: { [ana]: QUALITY_NOTES.ana, [bruno]: QUALITY_NOTES.bruno },
-    })
-
-    auth.userId = admin
-    const tree = await render(project)
-
-    const pair = qualityOf(tree).pair
-    expect(pair).toEqual({
-      all: {
-        rated: true,
-        total: 8,
-        levels: [
-          { value: 'high', count: 5, share: 0.625 },
-          { value: 'medium', count: 2, share: 0.25 },
-          { value: 'low', count: 1, share: 0.125 },
-        ],
-      },
-      withoutOutliers: null,
-      excluded: 0,
-    })
-    expect(pair.all).toEqual(roundsQualityOf(await renderRounds(project)))
-
-    const text = qualityTextOf(tree)
-    expect(text).toContain('Alto 62,5% (5)')
-    expect(text).toContain('Médio 25% (2)')
-    expect(text).toContain('Baixo 12,5% (1)')
-
-    const section = sectionWith(tree, QualityPanel)
-    expect((section!.props as { title: unknown }).title).toBe(
-      'Qualidade - Rodada 1',
-    )
-    expect((section!.props as SectionProps).help).toBeUndefined()
-    expect((section!.props as SectionProps).more).toBeUndefined()
-    expect(findElement(section, AgreementSeriesChart)).toBeNull()
-    expect(sectionWith(tree, AgreementSeriesChart)).not.toBe(section)
-    expect(hasProp(section, 'href', `/projects/${project}/rounds`)).toBe(false)
-    expect(roundsLinksOf(tree, project)).toHaveLength(0)
-  })
-
   it('com uma rodada fechada da Fase 2 e uma aberta da Fase 3, a visão geral não tem "Abrir rodadas →" e não repete a Qualidade por rodada', async () => {
     const admin = await newUser('Admin')
     const project = await newProject(admin, PHASE_3)
@@ -1718,7 +1639,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     auth.userId = admin
     const tree = await render(project)
 
-    expect(findElement(tree, QualityPanel)).toBeTruthy()
+    expect(deepText(tree)).not.toContain('Qualidade - Rodada')
     expect(findElement(tree, QualitySeriesChart)).toBeNull()
     expect(deepText(tree)).not.toContain('Qualidade por rodada')
 
@@ -1743,7 +1664,6 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     auth.userId = admin
     const tree = await render(project)
 
-    expect(findElement(tree, QualityPanel)).toBeNull()
     expect(findElement(tree, QualitySeriesChart)).toBeNull()
     expect(deepText(tree)).not.toContain('Qualidade')
     expect(seriesOf(tree).series.rounds).toHaveLength(1)
@@ -1768,13 +1688,12 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     async function expectNoQuality() {
       auth.userId = admin
       const adminTree = await render(project)
-      expect(qualityOf(adminTree).pair.all).toMatchObject({ total: 8 })
+      expect(deepText(adminTree)).not.toContain('Qualidade - Rodada')
       expect(findElement(adminTree, QualitySeriesChart)).toBeNull()
       expect(findElement(await renderRounds(project), QualityHeatmap)).toBeTruthy()
 
       auth.userId = evaluator
       const tree = await render(project)
-      expect(findElement(tree, QualityPanel)).toBeNull()
       expect(findElement(tree, QualitySeriesChart)).toBeNull()
       expect(findElement(tree, QualityHeatmap)).toBeNull()
       const page = deepText(tree)
@@ -1829,7 +1748,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     return { project, ana, bruno, third, fourth }
   }
 
-  it('o Administrador vê a série de Qualidade com um ponto por rodada da Fase 3, cada um com as suas versões', async () => {
+  it('o Administrador vê a série de Qualidade com um ponto por rodada da Fase 3, sem a lista de números por rodada', async () => {
     const admin = await newUser('Admin')
     const { project } = await qualitySeriesScene(admin)
 
@@ -1838,26 +1757,9 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
 
     const points = qualitySeriesOf(tree).points
     expect(points.map((point) => point.roundNumber)).toEqual([3, 4])
-    expect(points.map((point) => point.codebookVersionNumber)).toEqual([3, 4])
-    expect(points.map((point) => point.promptVersionNumber)).toEqual([1, 2])
     expect(points.map((point) => point.pair.withoutOutliers)).toEqual([null, null])
 
-    const text = qualitySeriesTextOf(tree)
-    expect(text).toContain('Rodada 3')
-    expect(text).toContain('Rodada 4')
-    expect(text.indexOf('Rodada 3')).toBeLessThan(text.indexOf('Rodada 4'))
-    expect(text).toContain('Codebook v3')
-    expect(text).toContain('Codebook v4')
-    expect(text).toContain('Prompt v1')
-    expect(text).toContain('Prompt v2')
-    expect(text).toContain('Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1)')
-    expect(text).toContain('Alto 0% (0) · Médio 25% (1) · Baixo 75% (3)')
-    expect(text).toContain('Aberta')
-    expect(text).not.toContain(AGREEMENT_ALL_LABEL)
-    expect(text).not.toContain('média')
-    expect(text).not.toContain('nenhum valor que junte rodadas')
-
-    const { chart, numbers } = qualitySeriesPartsOf(tree)
+    const chart = qualitySeriesMarkupOf(tree)
     expect(chart).toContain(
       'Rodada 3: Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1) · 8 notas;',
     )
@@ -1867,17 +1769,13 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(chart.match(/<polyline[^>]*class="stroke-quality-[a-z]+"/g)).toHaveLength(3)
     expect(textOfMarkup(chart)).toContain('R3 R4 Fase 3 Alto Médio Baixo')
     expect(textOfMarkup(chart)).not.toContain('Codebook')
-
-    expect(numbers.startsWith('<details class="group">')).toBe(true)
-    const numbersText = textOfMarkup(numbers)
-    expect(numbersText.startsWith(QUALITY_SERIES_NUMBERS)).toBe(true)
-    expect(numbersText).toContain('Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1) 8 notas')
-    expect(numbersText).toContain('Alto 0% (0) · Médio 25% (1) · Baixo 75% (3) 4 notas')
-    expect(numbersText.indexOf('Rodada 3')).toBeLessThan(numbersText.indexOf('Rodada 4'))
+    expect(chart).not.toContain('<details')
+    expect(textOfMarkup(chart)).not.toContain('Ver os números de cada rodada')
+    expect(chart).not.toContain(AGREEMENT_ALL_LABEL)
+    expect(chart).not.toContain('média')
 
     const section = sectionWith(tree, QualitySeriesChart)
     expect((section!.props as { title: unknown }).title).toBe('Qualidade por rodada')
-    expect(section).not.toBe(sectionWith(tree, QualityPanel))
     expect(section).not.toBe(sectionWith(tree, AgreementSeriesChart))
     expect(qualitySeriesMarkupOf(tree)).not.toContain(`href="/projects/${project}/rounds"`)
     expect(roundsLinksOf(tree, project)).toHaveLength(0)
@@ -1890,11 +1788,11 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     auth.userId = admin
     const tree = await render(project)
 
-    const text = qualitySeriesTextOf(tree)
-    expect(text).not.toContain('Rodada 1')
-    expect(text).not.toContain('Rodada 2')
-    expect(text).not.toContain('Codebook v1')
-    expect(text).not.toContain('Codebook v2')
+    expect(qualitySeriesOf(tree).points.map((point) => point.roundNumber)).toEqual([3, 4])
+    const chart = qualitySeriesMarkupOf(tree)
+    expect(chart).toContain('Rodada 3:')
+    expect(chart).not.toContain('Rodada 1:')
+    expect(chart).not.toContain('Rodada 2:')
 
     expect(seriesOf(tree).series.rounds.map((round) => round.roundNumber)).toEqual([1, 2, 3, 4])
   })
@@ -1913,7 +1811,6 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(focusPoint.pair.withoutOutliers).toEqual(
       roundsQualityOf(await renderRounds(project, { qualidade: 'sem-outliers' })),
     )
-    expect(focusPoint.pair).toEqual(qualityOf(tree).pair)
   })
 
   it('com outlier marcado numa rodada, só o ponto dela traz o par, com todos primeiro', async () => {
@@ -1937,7 +1834,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(marked.pair.all).toMatchObject({ rated: true, total: 8 })
     expect(unmarked.pair.withoutOutliers).toBeNull()
 
-    const { chart, numbers } = qualitySeriesPartsOf(tree)
+    const chart = qualitySeriesMarkupOf(tree)
     expect(chart).toContain(
       'Rodada 3: Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1) · 8 notas, ' +
         `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: Alto 75% (3) · Médio 25% (1) · Baixo 0% (0) · 4 notas;`,
@@ -1948,20 +1845,6 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
       AGREEMENT_WITHOUT_OUTLIERS_LABEL,
     )
     expect(chart).not.toContain(AGREEMENT_ALL_LABEL)
-
-    const text = textOfMarkup(numbers)
-    const markedText = text.slice(text.indexOf('Rodada 3'), text.indexOf('Rodada 4'))
-    const unmarkedText = text.slice(text.indexOf('Rodada 4'))
-
-    expect(markedText).toContain(AGREEMENT_ALL_LABEL)
-    expect(markedText).toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
-    expect(markedText.indexOf(AGREEMENT_ALL_LABEL)).toBeLessThan(
-      markedText.indexOf(AGREEMENT_WITHOUT_OUTLIERS_LABEL),
-    )
-    expect(markedText).toContain('Alto 62,5% (5)')
-    expect(markedText).toContain('Alto 75% (3)')
-    expect(unmarkedText).not.toContain(AGREEMENT_ALL_LABEL)
-    expect(unmarkedText).not.toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
   })
 
   it('duas versões de codebook viram dois pontos, e nada na tela junta os dois', async () => {
@@ -2078,7 +1961,6 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
 
       expect(findElement(tree, StatCard)).toBeTruthy()
       expect(findElement(tree, AgreementSeriesChart)).toBeNull()
-      expect(findElement(tree, QualityPanel)).toBeNull()
       expect(findElement(tree, QualitySeriesChart)).toBeNull()
       expect(roundsLinksOf(tree, project)).toHaveLength(0)
       const page = deepText(tree)
@@ -2305,11 +2187,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(markupText(markup)).toContain('R2 R3 R4 Fase 3 Fase 4')
     expect(markupText(markup)).not.toContain('R1')
     expect(markupText(markup)).not.toContain('Rodada 1')
-
-    const numbersText = markupText(qualitySeriesPartsOf(tree).numbers)
-    expect(numbersText).toContain('Prompt v1 · Fase 3')
-    expect(numbersText).toContain('Prompt v1 · Fase 4')
-    expect(numbersText.match(/Rodada \d/g)).toEqual(['Rodada 2', 'Rodada 3', 'Rodada 4'])
+    expect(markup.match(/Rodada \d:/g)).toEqual(['Rodada 2:', 'Rodada 3:', 'Rodada 4:'])
   })
 
   it('os textos da série de Qualidade falam das Fases 3 e 4, e não só da Fase 3', async () => {

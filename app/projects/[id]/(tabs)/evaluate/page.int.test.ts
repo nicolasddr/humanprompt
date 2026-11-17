@@ -41,7 +41,7 @@ import {
   PHASE_3,
   PHASE_4,
 } from '@/app/projects/[id]/pipeline/preconditions'
-import { QualityPanel, QualityValue } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
+import { QualityValue } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
 import { roundInputSummary } from '@/app/projects/[id]/(tabs)/rounds/preconditions'
 import { Section } from '@/app/components/ui/section'
 import { ProgressBar } from '@/app/components/ui/stat'
@@ -1189,7 +1189,6 @@ describe('app/projects/[id]/evaluate — a tela do avaliador', () => {
       expect(page).not.toContain(roundInputSummary(PHASE_2))
       expect(page).not.toContain(roundInputSummary(PHASE_3))
       expect(page).not.toContain(roundInputSummary(PHASE_4))
-      expect(findElement(tree, QualityPanel)).toBeNull()
       expect(findElement(tree, QualityValue)).toBeNull()
     }
   })
