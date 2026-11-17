@@ -66,7 +66,7 @@ import {
 } from '@/app/projects/[id]/(tabs)/rounds/concordance-series-labels'
 import { QualityPanel } from '@/app/projects/[id]/(tabs)/rounds/quality-panel'
 import { QualityLine } from '@/app/projects/[id]/(tabs)/rounds/quality-line'
-import { QualitySeriesList } from '@/app/projects/[id]/(tabs)/rounds/quality-series-list'
+import { QualitySeriesChart } from '@/app/projects/[id]/(tabs)/rounds/quality-series-chart'
 import {
   QUALITY_SERIES_HINT,
   QUALITY_SERIES_NOTE,
@@ -223,7 +223,7 @@ type TabsProps = Parameters<typeof ProjectTabs>[0]
 type AdvanceProps = Parameters<typeof AdvancePhase>[0]
 type SeriesProps = Parameters<typeof AgreementSeriesChart>[0]
 type QualityProps = Parameters<typeof QualityPanel>[0]
-type QualitySeriesProps = Parameters<typeof QualitySeriesList>[0]
+type QualitySeriesProps = Parameters<typeof QualitySeriesChart>[0]
 
 type ScaleValue = NonNullable<CellFixture['value']>
 
@@ -394,13 +394,13 @@ function qualityTextOf(tree: unknown): string {
 }
 
 function qualitySeriesOf(tree: unknown): QualitySeriesProps {
-  const element = findElement(tree, QualitySeriesList)
+  const element = findElement(tree, QualitySeriesChart)
   expect(element).toBeTruthy()
   return element!.props as QualitySeriesProps
 }
 
 function qualitySeriesMarkupOf(tree: unknown): string {
-  return renderToStaticMarkup(createElement(QualitySeriesList, qualitySeriesOf(tree)))
+  return renderToStaticMarkup(createElement(QualitySeriesChart, qualitySeriesOf(tree)))
 }
 
 function textOfMarkup(markup: string): string {
@@ -414,11 +414,11 @@ function qualitySeriesTextOf(tree: unknown): string {
   return textOfMarkup(qualitySeriesMarkupOf(tree))
 }
 
-function qualitySeriesPartsOf(tree: unknown): { bars: string; numbers: string } {
+function qualitySeriesPartsOf(tree: unknown): { chart: string; numbers: string } {
   const markup = qualitySeriesMarkupOf(tree)
   const split = markup.indexOf('<details')
   expect(split).toBeGreaterThan(0)
-  return { bars: markup.slice(0, split), numbers: markup.slice(split) }
+  return { chart: markup.slice(0, split), numbers: markup.slice(split) }
 }
 
 type SectionProps = Parameters<typeof Section>[0]
@@ -1742,7 +1742,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     const tree = await render(project)
 
     expect(findElement(tree, QualityPanel)).toBeTruthy()
-    expect(findElement(tree, QualitySeriesList)).toBeNull()
+    expect(findElement(tree, QualitySeriesChart)).toBeNull()
     expect(deepText(tree)).not.toContain('Qualidade por rodada')
 
     const links = roundsLinksOf(tree, project)
@@ -1776,7 +1776,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     const tree = await render(project)
 
     expect(findElement(tree, QualityPanel)).toBeNull()
-    expect(findElement(tree, QualitySeriesList)).toBeNull()
+    expect(findElement(tree, QualitySeriesChart)).toBeNull()
     expect(deepText(tree)).not.toContain('Qualidade')
     expect(seriesOf(tree).series.rounds).toHaveLength(1)
   })
@@ -1801,13 +1801,13 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
       auth.userId = admin
       const adminTree = await render(project)
       expect(qualityOf(adminTree).pair.all).toMatchObject({ total: 8 })
-      expect(findElement(adminTree, QualitySeriesList)).toBeNull()
+      expect(findElement(adminTree, QualitySeriesChart)).toBeNull()
       expect(findElement(await renderRounds(project), QualityHeatmap)).toBeTruthy()
 
       auth.userId = evaluator
       const tree = await render(project)
       expect(findElement(tree, QualityPanel)).toBeNull()
-      expect(findElement(tree, QualitySeriesList)).toBeNull()
+      expect(findElement(tree, QualitySeriesChart)).toBeNull()
       expect(findElement(tree, QualityHeatmap)).toBeNull()
       const page = deepText(tree)
       expect(page).not.toContain('Qualidade')
@@ -1889,13 +1889,16 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(text).not.toContain('média')
     expect(text).toContain(QUALITY_SERIES_NOTE)
 
-    const { bars, numbers } = qualitySeriesPartsOf(tree)
-    expect(bars).toContain('title="Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1) · 8 notas"')
-    expect(bars).toContain('title="Alto 0% (0) · Médio 25% (1) · Baixo 75% (3) · 4 notas"')
-    expect(bars.match(/class="h-full bg-quality-[a-z]+"/g)).toHaveLength(6)
-    expect(textOfMarkup(bars)).not.toContain('%')
-    expect(textOfMarkup(bars)).toContain('Alto · Médio · Baixo')
-    expect(textOfMarkup(bars)).toContain('Codebook v3 · Prompt v1')
+    const { chart, numbers } = qualitySeriesPartsOf(tree)
+    expect(chart).toContain(
+      '<title>Rodada 3: Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1) · 8 notas</title>',
+    )
+    expect(chart).toContain(
+      '<title>Rodada 4: Alto 0% (0) · Médio 25% (1) · Baixo 75% (3) · 4 notas</title>',
+    )
+    expect(chart.match(/<polyline[^>]*class="stroke-quality-[a-z]+"/g)).toHaveLength(3)
+    expect(textOfMarkup(chart)).toContain('R3 R4 Fase 3 Alto Médio Baixo')
+    expect(textOfMarkup(chart)).not.toContain('Codebook')
 
     expect(numbers.startsWith('<details class="group">')).toBe(true)
     const numbersText = textOfMarkup(numbers)
@@ -1904,7 +1907,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(numbersText).toContain('Alto 0% (0) · Médio 25% (1) · Baixo 75% (3) 4 notas')
     expect(numbersText.indexOf('Rodada 3')).toBeLessThan(numbersText.indexOf('Rodada 4'))
 
-    const section = sectionWith(tree, QualitySeriesList)
+    const section = sectionWith(tree, QualitySeriesChart)
     expect((section!.props as { title: unknown }).title).toBe('Qualidade por rodada')
     expect(section).not.toBe(sectionWith(tree, QualityPanel))
     expect(section).not.toBe(sectionWith(tree, AgreementSeriesChart))
@@ -1968,24 +1971,17 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(marked.pair.all).toMatchObject({ rated: true, total: 8 })
     expect(unmarked.pair.withoutOutliers).toBeNull()
 
-    const { bars, numbers } = qualitySeriesPartsOf(tree)
-    const markedBars = bars.slice(bars.indexOf('Rodada 3'), bars.indexOf('Rodada 4'))
-    const unmarkedBars = bars.slice(bars.indexOf('Rodada 4'))
-    const allBar = markedBars.indexOf(
-      `title="${AGREEMENT_ALL_LABEL}: Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1) · 8 notas"`,
+    const { chart, numbers } = qualitySeriesPartsOf(tree)
+    expect(chart).toContain(
+      '<title>Rodada 3: Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1) · 8 notas, ' +
+        `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: Alto 75% (3) · Médio 25% (1) · Baixo 0% (0) · 4 notas</title>`,
     )
-    const withoutBar = markedBars.indexOf(
-      `title="${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: Alto 75% (3) · Médio 25% (1) · Baixo 0% (0) · 4 notas"`,
+    expect(chart).toMatch(/<polyline points="25,37\.5 75,100"[^>]*class="stroke-quality-high"/)
+    const unmarkedTitle = chart.slice(chart.indexOf('<title>Rodada 4'))
+    expect(unmarkedTitle.slice(0, unmarkedTitle.indexOf('</title>'))).not.toContain(
+      AGREEMENT_WITHOUT_OUTLIERS_LABEL,
     )
-
-    expect(allBar).toBeGreaterThan(0)
-    expect(withoutBar).toBeGreaterThan(allBar)
-    expect(markedBars.slice(allBar, withoutBar)).toContain('h-2')
-    expect(markedBars.slice(allBar, withoutBar)).not.toContain('h-1.5')
-    expect(markedBars.slice(withoutBar)).toContain('h-1.5')
-    expect(textOfMarkup(markedBars.slice(withoutBar))).toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
-    expect(unmarkedBars).not.toContain(AGREEMENT_ALL_LABEL)
-    expect(unmarkedBars).not.toContain(AGREEMENT_WITHOUT_OUTLIERS_LABEL)
+    expect(chart).not.toContain(AGREEMENT_ALL_LABEL)
 
     const text = textOfMarkup(numbers)
     const markedText = text.slice(text.indexOf('Rodada 3'), text.indexOf('Rodada 4'))
@@ -2117,7 +2113,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
       expect(findElement(tree, StatCard)).toBeTruthy()
       expect(findElement(tree, AgreementSeriesChart)).toBeNull()
       expect(findElement(tree, QualityPanel)).toBeNull()
-      expect(findElement(tree, QualitySeriesList)).toBeNull()
+      expect(findElement(tree, QualitySeriesChart)).toBeNull()
       expect(roundsLinksOf(tree, project)).toHaveLength(0)
       const page = deepText(tree)
       expect(page).not.toContain('Confiabilidade por rodada')
@@ -2325,7 +2321,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(phaseLabels(markup)).toBe('Fase 2 Fase 3 Fase 4')
   })
 
-  it('a série de Qualidade cobre as Fases 3 e 4, com a fase de cada ponto e um grupo por fase', async () => {
+  it('a série de Qualidade cobre as Fases 3 e 4, com a fase de cada ponto e uma divisória entre as fases', async () => {
     const admin = await newUser('Admin')
     const project = await phase4SeriesScene(admin)
 
@@ -2336,27 +2332,16 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     expect(points.map((point) => point.roundNumber)).toEqual([2, 3, 4])
     expect(points.map((point) => point.phase)).toEqual([PHASE_3, PHASE_3, PHASE_4])
 
-    const markup = renderToStaticMarkup(createElement(QualitySeriesList, qualitySeriesOf(tree)))
-    const groups = markup.split('<h3').slice(1)
-    expect(groups).toHaveLength(2)
+    const markup = renderToStaticMarkup(createElement(QualitySeriesChart, qualitySeriesOf(tree)))
+    expect(phaseDividers(markup)).toBe(1)
+    expect(phaseLabels(markup)).toBe('Fase 3 Fase 4')
+    expect(markupText(markup)).toContain('R2 R3 R4 Fase 3 Fase 4')
+    expect(markupText(markup)).not.toContain('R1')
+    expect(markupText(markup)).not.toContain('Rodada 1')
 
-    const [phase3, phase4] = groups.map((group) =>
-      markupText(`<h3${group.slice(0, group.indexOf('</ul>'))}`),
-    )
-    expect(phase3.startsWith('Fase 3')).toBe(true)
-    expect(phase3).toContain('Rodada 2')
-    expect(phase3).toContain('Rodada 3')
-    expect(phase3).not.toContain('Rodada 4')
-    expect(phase4.startsWith('Fase 4')).toBe(true)
-    expect(phase4).toContain('Rodada 4')
-    expect(phase4).not.toContain('Rodada 3')
-
-    const { bars, numbers } = qualitySeriesPartsOf(tree)
-    const numbersText = markupText(numbers)
+    const numbersText = markupText(qualitySeriesPartsOf(tree).numbers)
     expect(numbersText).toContain('Prompt v1 · Fase 3')
     expect(numbersText).toContain('Prompt v1 · Fase 4')
-    expect(markupText(markup)).not.toContain('Rodada 1')
-    expect(markupText(bars).match(/Rodada \d/g)).toEqual(['Rodada 2', 'Rodada 3', 'Rodada 4'])
     expect(numbersText.match(/Rodada \d/g)).toEqual(['Rodada 2', 'Rodada 3', 'Rodada 4'])
   })
 
@@ -2367,7 +2352,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     const project = await phase4SeriesScene(admin)
 
     auth.userId = admin
-    const section = sectionWith(await render(project), QualitySeriesList)
+    const section = sectionWith(await render(project), QualitySeriesChart)
     const props = section!.props as SectionProps
     expect(props.hint).toBe(QUALITY_SERIES_HINT)
     expect(props.help).toBeUndefined()
@@ -2388,7 +2373,7 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
     auth.userId = evaluator
     const tree = await render(project)
     expect(findElement(tree, AgreementSeriesChart)).toBeNull()
-    expect(findElement(tree, QualitySeriesList)).toBeNull()
+    expect(findElement(tree, QualitySeriesChart)).toBeNull()
     expect(findElement(tree, ConcordanceSeriesChart)).toBeNull()
     const page = deepText(tree)
     expect(page).not.toContain('Concordância')

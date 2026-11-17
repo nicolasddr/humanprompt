@@ -61,7 +61,7 @@ import {
 } from './rounds/quality-labels'
 import { QualityPanel } from './rounds/quality-panel'
 import { qualitySeries } from './rounds/quality-series'
-import { QualitySeriesList } from './rounds/quality-series-list'
+import { QualitySeriesChart } from './rounds/quality-series-chart'
 import { SubmitButton } from '@/app/components/submit-button'
 import { ButtonLink } from '@/app/components/ui/button'
 import { Callout } from '@/app/components/ui/panel'
@@ -540,7 +540,7 @@ export default async function ProjectPage({
               title="Qualidade por rodada"
               hint={QUALITY_SERIES_HINT}
             >
-              <QualitySeriesList points={qualityPoints} />
+              <QualitySeriesChart points={qualityPoints} />
             </Section>
           ) : null}
 

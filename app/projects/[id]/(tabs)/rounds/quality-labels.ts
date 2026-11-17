@@ -38,7 +38,7 @@ export const QUALITY_SERIES_HINT =
 
 export const QUALITY_SERIES_NOTE =
   'Um ponto por rodada, e nenhum valor que junte rodadas: cada distribuição descreve as ' +
-  'versões de codebook e de prompt indicadas ao lado dela.'
+  'versões de codebook e de prompt da sua rodada, listadas nos números de cada rodada.'
 
 export const QUALITY_SERIES_NUMBERS = 'Ver os números de cada rodada'
 

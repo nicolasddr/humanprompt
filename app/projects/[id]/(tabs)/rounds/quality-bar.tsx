@@ -1,5 +1,5 @@
 import { cx } from '@/app/components/ui/cx'
-import { SCALE, scaleLabel, type ScaleValue } from '../evaluate/scale'
+import { scaleLabel, type ScaleValue } from '../evaluate/scale'
 import type { QualityLevel } from './quality'
 import { formatShare, levelText } from './quality-labels'
 
@@ -9,22 +9,18 @@ const TONE: Record<ScaleValue, string> = {
   low: 'bg-quality-low',
 }
 
-const HEIGHT = { md: 'h-2', sm: 'h-1.5' }
-
 export function QualityBar({
   levels,
-  size = 'md',
   title,
 }: {
   levels: QualityLevel[]
-  size?: keyof typeof HEIGHT
   title?: string
 }) {
   return (
     <div
       aria-hidden
       title={title}
-      className={cx('flex w-full overflow-hidden rounded-full bg-line', HEIGHT[size])}
+      className="flex h-2 w-full overflow-hidden rounded-full bg-line"
     >
       {levels.map((level) => (
         <span
@@ -55,19 +51,5 @@ export function QualityLegend({ levels }: { levels: QualityLevel[] }) {
         </li>
       ))}
     </ul>
-  )
-}
-
-export function QualityScaleLegend({ suffix }: { suffix?: string }) {
-  return (
-    <p className="m-0 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted">
-      {SCALE.map((value, index) => (
-        <span key={value} className="flex items-center gap-1.5">
-          <QualitySwatch value={value} />
-          {scaleLabel(value)}
-          {index < SCALE.length - 1 ? ' ·' : suffix ? `, ${suffix}` : null}
-        </span>
-      ))}
-    </p>
   )
 }
