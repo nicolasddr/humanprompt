@@ -36,6 +36,10 @@ import { PHASE_2, PHASE_3 } from '@/app/projects/[id]/pipeline/preconditions'
 import { QUALITY_SECTION_ID } from '@/app/projects/[id]/(tabs)/rounds/reading-guidance'
 import { QualityLine } from '@/app/projects/[id]/(tabs)/rounds/quality-line'
 import { qualityPair } from '@/app/projects/[id]/(tabs)/rounds/quality'
+import { PageTitle } from '@/app/components/ui/shell'
+import { InfoTooltip } from '@/app/components/ui/tooltip'
+import { LearnMore } from '@/app/components/ui/learn-more'
+import { RoundChangeChips } from '@/app/projects/[id]/(tabs)/rounds/round-changes-note'
 import { ownerDb } from '@/lib/db'
 import {
   createUser,
@@ -271,6 +275,24 @@ describe('app/projects/[id]/rounds/[roundId]/agreement — a concordância de um
     const tree = await render(project, rounds[0])
     agreementSectionOf(tree)
     expect(qualitySectionsOf(tree)).toHaveLength(0)
+  })
+
+  it('o cabeçalho é o título "Rodada N" com o ⓘ de fase, versões e data, sem chips nem "Saiba mais", em qualquer fase', async () => {
+    for (const phase of [PHASE_2, PHASE_3]) {
+      const { project, admin, rounds } = await scene(phase)
+
+      auth.userId = admin
+      const tree = await render(project, rounds[1])
+      const [title] = findAll(tree, PageTitle)
+      expect((title.props as { children: unknown }).children).toEqual(['Rodada ', 2])
+
+      const [tooltip] = findAll(tree, InfoTooltip)
+      expect((tooltip.props as { text: string }).text).toMatch(
+        new RegExp(`^Fase ${phase} · Codebook v1 · Prompt v1\\nFechada em \\d{2}/\\d{2}/\\d{4}$`),
+      )
+      expect(findAll(tree, RoundChangeChips)).toHaveLength(0)
+      expect(findAll(tree, LearnMore)).toHaveLength(0)
+    }
   })
 
   it('o avaliador não abre a concordância da rodada', async () => {

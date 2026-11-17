@@ -58,8 +58,12 @@ import { loadCodebookVersion } from '@/app/projects/[id]/pipeline/codebook'
 import { PER_RESPONSE_LABEL, resolveCells } from '@/app/projects/[id]/pipeline/criteria'
 import { PHASE_2, PHASE_3, PHASE_4 } from '@/app/projects/[id]/pipeline/preconditions'
 import { roundInputSummary } from '@/app/projects/[id]/(tabs)/rounds/preconditions'
-import { RoundChangeChips } from '@/app/projects/[id]/(tabs)/rounds/round-changes-note'
-import { closedOn } from '@/app/projects/[id]/(tabs)/rounds/reference-comparison-labels'
+import {
+  RoundChangeChips,
+  RoundChangeNotice,
+} from '@/app/projects/[id]/(tabs)/rounds/round-changes-note'
+import { PageTitle } from '@/app/components/ui/shell'
+import { InfoTooltip } from '@/app/components/ui/tooltip'
 import { Section } from '@/app/components/ui/section'
 import { LearnMore } from '@/app/components/ui/learn-more'
 import { formatDate } from '@/app/notifications/labels'
@@ -72,7 +76,6 @@ import {
 import {
   ownerDb,
   projectMembers,
-  responses as responsesTable,
   rounds as roundsTable,
 } from '@/lib/db'
 import {
@@ -145,17 +148,25 @@ function listTextOf(tree: unknown): string {
     .trim()
 }
 
-type ChangesProps = Parameters<typeof RoundChangeChips>[0]
-
-function changesTextOf(tree: unknown): string {
-  const element = findElement(tree, RoundChangeChips)
-  expect(element).toBeTruthy()
-  return renderToStaticMarkup(
-    createElement(RoundChangeChips, element!.props as ChangesProps),
+function headerOf(tree: unknown): ReactElement {
+  const [header] = findAll(tree, ['div']).filter(
+    (div) => findElement((div.props as { children?: unknown }).children, PageTitle) !== null,
   )
+  expect(header).toBeTruthy()
+  return header
+}
+
+function headerTextOf(tree: unknown): string {
+  return renderToStaticMarkup(headerOf(tree))
     .replace(/<[^>]*>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+function headerDetailsOf(tree: unknown): string {
+  const tooltip = findElement(headerOf(tree), InfoTooltip)
+  expect(tooltip).toBeTruthy()
+  return (tooltip!.props as { text: string }).text
 }
 
 type CodebookShape = Parameters<typeof addCodebookVersion>[3]
@@ -922,19 +933,23 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     expect(findElement(tree, AgreementMatrixTable)).toBeNull()
   })
 
-  it('o Administrador lê o que a rodada mandou à LLM, pela fase da rodada', async () => {
+  it('o Administrador lê fase, versões e data no ⓘ do título, sem o que foi à LLM', async () => {
     const admin = await newUser('Admin')
     const first = await roundWith(admin, 1, { phase: PHASE_2 })
     const second = await roundWith(admin, 1, { phase: PHASE_3 })
 
     auth.userId = admin
-    const phase2 = textOf(await render(first.project, first.round))
-    expect(phase2).toContain(roundInputSummary(PHASE_2))
-    expect(phase2).not.toContain(roundInputSummary(PHASE_3))
+    const phase2 = await render(first.project, first.round)
+    expect(headerDetailsOf(phase2)).toMatch(
+      new RegExp(`^Fase ${PHASE_2} · Codebook v1 · Prompt v1\\nFechada em \\d{2}/\\d{2}/\\d{4}$`),
+    )
+    expect(textOf(phase2)).not.toContain(roundInputSummary(PHASE_2))
 
-    const phase3 = textOf(await render(second.project, second.round))
-    expect(phase3).toContain(roundInputSummary(PHASE_3))
-    expect(phase3).not.toContain(roundInputSummary(PHASE_2))
+    const phase3 = await render(second.project, second.round)
+    expect(headerDetailsOf(phase3)).toMatch(
+      new RegExp(`^Fase ${PHASE_3} · Codebook v1 · Prompt v1\\nFechada em \\d{2}/\\d{2}/\\d{4}$`),
+    )
+    expect(textOf(phase3)).not.toContain(roundInputSummary(PHASE_3))
   })
 
   it('o avaliador na mesma rodada não lê a fase nem o que foi à LLM', async () => {
@@ -953,7 +968,7 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
 
     auth.userId = admin
     const adminTree = await render(scene.project, scene.round)
-    expect(findElement(adminTree, RoundChangeChips)).toBeTruthy()
+    expect(findElement(adminTree, PageTitle)).toBeTruthy()
 
     auth.userId = ana.user
     const tree = await render(scene.project, scene.round)
@@ -962,14 +977,15 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     expect(text).toContain('Ana Avaliadora')
     expect(text).not.toContain('Fase')
     expect(text).not.toContain('LLM')
-    expect(findElement(tree, RoundChangeChips)).toBeNull()
+    expect(findElement(tree, PageTitle)).toBeNull()
+    expect(findElement(tree, RoundChangeNotice)).toBeNull()
     expect(text).not.toContain('Em relação à rodada')
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_WITH_INPUT_NOTICE)
     expect(text).not.toContain(ENTERS_PHASE_3_NOTE)
   })
 
-  it('com codebook e prompt mudados juntos, o Administrador lê o aviso e os chips da rodada', async () => {
+  it('com codebook e prompt mudados juntos, o Administrador lê o título, o ⓘ com as versões e o aviso', async () => {
     const admin = await newUser('Admin')
     const first = await roundWith(admin, 1)
     const second = await nextRoundWith(admin, first, 1, {
@@ -979,19 +995,17 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     })
 
     auth.userId = admin
-    const text = changesTextOf(await render(second.project, second.round))
+    const tree = await render(second.project, second.round)
+    const text = headerTextOf(tree)
 
-    expect(text).toContain('Rodada 2')
-    expect(text).toContain('Codebook v2')
-    expect(text).not.toContain('Codebook v1')
-    expect(text).toContain('Prompt v1 → v2')
-    expect(text).toContain(`Fase ${PHASE_2}`)
-    expect(text).not.toContain(`Fase ${PHASE_2} →`)
+    expect((findElement(tree, PageTitle)!.props as { children: unknown }).children).toEqual(['Rodada ', 2])
+    expect(headerDetailsOf(tree)).toMatch(new RegExp(`^Fase ${PHASE_2} · Codebook v2 · Prompt v2\\n`))
+    expect(text).not.toContain('→')
     expect(text).toContain(CODEBOOK_AND_PROMPT_NOTICE)
     expect(text).not.toContain(ENTERS_PHASE_3_NOTE)
   })
 
-  it('com só o codebook mudado, não há aviso, e prompt e fase aparecem como os mesmos', async () => {
+  it('com só o codebook mudado, não há aviso', async () => {
     const admin = await newUser('Admin')
     const first = await roundWith(admin, 1)
     const second = await nextRoundWith(admin, first, 1, {
@@ -1000,20 +1014,17 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     })
 
     auth.userId = admin
-    const text = changesTextOf(await render(second.project, second.round))
+    const tree = await render(second.project, second.round)
+    const text = headerTextOf(tree)
 
-    expect(text).toContain('Codebook v2')
-    expect(text).not.toContain('Codebook v1')
-    expect(text).toContain('Prompt v1')
-    expect(text).not.toContain('Prompt v1 →')
-    expect(text).toContain(`Fase ${PHASE_2}`)
-    expect(text).not.toContain(`Fase ${PHASE_2} →`)
+    expect(headerDetailsOf(tree)).toMatch(new RegExp(`^Fase ${PHASE_2} · Codebook v2 · Prompt v1\\n`))
+    expect(text).not.toContain('→')
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_WITH_INPUT_NOTICE)
     expect(text).not.toContain(ENTERS_PHASE_3_NOTE)
   })
 
-  it('na primeira rodada da Fase 3, com as mesmas versões, aparece a frase da forma de montar a entrada', async () => {
+  it('na primeira rodada da Fase 3, com as mesmas versões, o cabeçalho não traz a frase da forma de montar a entrada', async () => {
     const admin = await newUser('Admin')
     const first = await roundWith(admin, 1, { phase: PHASE_2 })
     const second = await nextRoundWith(admin, first, 1, {
@@ -1022,15 +1033,11 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     })
 
     auth.userId = admin
-    const text = changesTextOf(await render(second.project, second.round))
+    const tree = await render(second.project, second.round)
+    const text = headerTextOf(tree)
 
-    expect(text).toContain(`Fase ${PHASE_3}`)
-    expect(text).not.toContain(`Fase ${PHASE_2}`)
-    expect(text).toContain('Codebook v1')
-    expect(text).not.toContain('Codebook v1 →')
-    expect(text).toContain('Prompt v1')
-    expect(text).not.toContain('Prompt v1 →')
-    expect(text).toContain(ENTERS_PHASE_3_NOTE)
+    expect(headerDetailsOf(tree)).toMatch(new RegExp(`^Fase ${PHASE_3} · Codebook v1 · Prompt v1\\n`))
+    expect(text).not.toContain(ENTERS_PHASE_3_NOTE)
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_WITH_INPUT_NOTICE)
   })
@@ -1045,37 +1052,14 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     })
 
     auth.userId = admin
-    const text = changesTextOf(await render(second.project, second.round))
+    const text = headerTextOf(await render(second.project, second.round))
 
-    expect(text).toContain(ENTERS_PHASE_3_NOTE)
     expect(text).toContain(CODEBOOK_AND_PROMPT_WITH_INPUT_NOTICE)
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
-  })
-
-  it('na primeira rodada da Fase 4, a revisão diz que codebook e prompt são os da rodada de referência e que mudam itens e avaliadores', async () => {
-    const admin = await newUser('Admin')
-    const first = await roundWith(admin, 1, { phase: PHASE_3 })
-    const second = await nextRoundWith(admin, first, 1, {
-      roundNumber: 2,
-      phase: PHASE_4,
-    })
-
-    auth.userId = admin
-    const text = changesTextOf(await render(second.project, second.round))
-
-    expect(text).toContain(`Fase ${PHASE_4}`)
-    expect(text).not.toContain(`Fase ${PHASE_3}`)
-    expect(text).toContain('Codebook v1')
-    expect(text).not.toContain('Codebook v1 →')
-    expect(text).toContain('Prompt v1')
-    expect(text).not.toContain('Prompt v1 →')
-    expect(text).toContain(entersPhase4Note(1))
     expect(text).not.toContain(ENTERS_PHASE_3_NOTE)
-    expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
-    expect(text).not.toContain(CODEBOOK_AND_PROMPT_WITH_INPUT_NOTICE)
   })
 
-  it('na primeira rodada da fase, o ⓘ do chip fica com o que foi à LLM, e a nota da fase vai para o "Saiba mais"', async () => {
+  it('na primeira rodada da Fase 4, o cabeçalho tem só o título e o ⓘ, sem a frase da rodada de referência nem "Saiba mais"', async () => {
     const admin = await newUser('Admin')
     const first = await roundWith(admin, 1, { phase: PHASE_3 })
     const second = await nextRoundWith(admin, first, 1, {
@@ -1084,55 +1068,26 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     })
 
     auth.userId = admin
-    const element = findElement(await render(second.project, second.round), RoundChangeChips)
-    const props = element!.props as ChangesProps
-    const markup = renderToStaticMarkup(createElement(RoundChangeChips, props))
+    const tree = await render(second.project, second.round)
+    const header = headerOf(tree)
+    const markup = renderToStaticMarkup(header)
     const tooltips = [...markup.matchAll(/<span [^>]*role="tooltip"[^>]*>([^<]*)<\/span>/g)].map(
       (match) => match[1],
     )
 
-    expect(tooltips).toEqual([roundInputSummary(PHASE_4)])
-    for (const text of tooltips) {
-      expect(text.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(25)
-    }
-    expect(
-      findAll(RoundChangeChips(props), [LearnMore]).map(
-        (block) => (block.props as { points: readonly string[] }).points,
-      ),
-    ).toEqual([[entersPhase4Note(1)]])
+    expect(tooltips).toEqual([headerDetailsOf(tree)])
+    expect(headerDetailsOf(tree)).toMatch(new RegExp(`^Fase ${PHASE_4} · Codebook v1 · Prompt v1\\n`))
+    expect(findElement(header, LearnMore)).toBeNull()
+    expect(findElement(header, RoundChangeChips)).toBeNull()
+    const text = headerTextOf(tree)
+    expect(text).not.toContain('Saiba mais')
+    expect(text).not.toContain(entersPhase4Note(1))
+    expect(text).not.toContain(roundInputSummary(PHASE_4))
+    expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
+    expect(text).not.toContain(CODEBOOK_AND_PROMPT_WITH_INPUT_NOTICE)
   })
 
-  it('a frase da Fase 4 aparece mesmo com os mesmos itens e avaliadores da referência', async () => {
-    const admin = await newUser('Admin')
-    const first = await roundWith(admin, 1, { phase: PHASE_3 })
-    const ana = await newSignedEvaluator(first.project, 'Ana Avaliadora')
-    await addEvaluation(ownerDb, first.round, first.responses[0], ana.member, {
-      cells: [note(first, 'Informacional', 'Precisão', 'high')],
-    })
-    const [{ inputItemId }] = await ownerDb
-      .select({ inputItemId: responsesTable.inputItemId })
-      .from(responsesTable)
-      .where(eq(responsesTable.id, first.responses[0]))
-    const round = await addRound(
-      ownerDb,
-      first.project,
-      admin,
-      first.codebookVersion,
-      first.promptVersion,
-      { roundNumber: 2, status: 'closed', phase: PHASE_4 },
-    )
-    const response = await addResponse(ownerDb, round, inputItemId, admin)
-    await addEvaluation(ownerDb, round, response, ana.member, {
-      cells: [note(first, 'Informacional', 'Precisão', 'high')],
-    })
-
-    auth.userId = admin
-    const text = changesTextOf(await render(first.project, round))
-
-    expect(text).toContain(entersPhase4Note(1))
-  })
-
-  it('a segunda rodada da Fase 4 não repete a frase', async () => {
+  it('a segunda rodada da Fase 4 tem o mesmo cabeçalho', async () => {
     const admin = await newUser('Admin')
     const first = await roundWith(admin, 1, { phase: PHASE_3 })
     const second = await nextRoundWith(admin, first, 1, {
@@ -1145,15 +1100,16 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     })
 
     auth.userId = admin
-    const text = changesTextOf(await render(third.project, third.round))
+    const tree = await render(third.project, third.round)
+    const text = headerTextOf(tree)
 
-    expect(text).toContain('Rodada 3')
-    expect(text).toContain(`Fase ${PHASE_4}`)
+    expect((findElement(tree, PageTitle)!.props as { children: unknown }).children).toEqual(['Rodada ', 3])
+    expect(headerDetailsOf(tree)).toMatch(new RegExp(`^Fase ${PHASE_4} · Codebook v1 · Prompt v1\\n`))
     expect(text).not.toContain('→')
     expect(text).not.toMatch(/Primeira rodada da Fase 4/)
   })
 
-  it('o avaliador na primeira rodada da Fase 4 não recebe o que mudou nem a frase', async () => {
+  it('o avaliador na primeira rodada da Fase 4 não recebe o cabeçalho nem a frase', async () => {
     const admin = await newUser('Admin')
     const first = await roundWith(admin, 1, { phase: PHASE_3 })
     const scene = await nextRoundWith(admin, first, 1, {
@@ -1166,36 +1122,35 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     })
 
     auth.userId = admin
-    expect(findElement(await render(scene.project, scene.round), RoundChangeChips)).toBeTruthy()
+    expect(findElement(await render(scene.project, scene.round), PageTitle)).toBeTruthy()
 
     auth.userId = ana.user
     const tree = await render(scene.project, scene.round)
     const text = `${textOf(tree)} ${listTextOf(tree)}`
 
     expect(text).toContain('Ana Avaliadora')
-    expect(findElement(tree, RoundChangeChips)).toBeNull()
+    expect(findElement(tree, PageTitle)).toBeNull()
     expect(text).not.toContain('Em relação à rodada')
     expect(text).not.toContain(entersPhase4Note(1))
     expect(text).not.toContain('rodada de referência')
   })
 
-  it('a primeira rodada do projeto mostra os chips da rodada sem nenhum destacado como mudança', async () => {
+  it('a primeira rodada do projeto mostra o título e o ⓘ, sem aviso', async () => {
     const admin = await newUser('Admin')
     const scene = await roundWith(admin, 1)
 
     auth.userId = admin
-    const text = changesTextOf(await render(scene.project, scene.round))
+    const tree = await render(scene.project, scene.round)
+    const text = headerTextOf(tree)
 
-    expect(text).toContain('Rodada 1')
-    expect(text).toContain(`Fase ${PHASE_2}`)
-    expect(text).toContain('Codebook v1')
-    expect(text).toContain('Prompt v1')
+    expect((findElement(tree, PageTitle)!.props as { children: unknown }).children).toEqual(['Rodada ', 1])
+    expect(headerDetailsOf(tree)).toMatch(new RegExp(`^Fase ${PHASE_2} · Codebook v1 · Prompt v1\\n`))
     expect(text).not.toContain('→')
     expect(text).not.toContain(CODEBOOK_AND_PROMPT_NOTICE)
     expect(text).not.toContain(ENTERS_PHASE_3_NOTE)
   })
 
-  it('o Administrador lê o que foi à LLM no ⓘ do chip da fase e a data de fechamento em chip, sem o hint da versão', async () => {
+  it('o Administrador lê a data de fechamento no ⓘ do título, sem o hint da versão', async () => {
     const admin = await newUser('Admin')
     const scene = await roundWith(admin, 1, { phase: PHASE_3 })
     const [{ closedAt }] = await ownerDb
@@ -1205,10 +1160,11 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
 
     auth.userId = admin
     const tree = await render(scene.project, scene.round)
-    const text = changesTextOf(tree)
 
-    expect(text).toContain(roundInputSummary(PHASE_3))
-    expect(text).toContain(closedOn(closedAt!))
+    expect(headerDetailsOf(tree)).toBe(
+      `Fase ${PHASE_3} · Codebook v1 · Prompt v1\nFechada em ${formatDate(closedAt!)}`,
+    )
+    expect(headerTextOf(tree)).not.toContain(roundInputSummary(PHASE_3))
     const section = findElement(tree, Section)
     expect(section).toBeTruthy()
     const props = section!.props as { title: string; hint?: unknown; help?: string }
@@ -1220,7 +1176,7 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     expect(props.help!.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(25)
   })
 
-  it('o avaliador continua lendo o hint da versão, sem chips', async () => {
+  it('o avaliador continua lendo o hint da versão, sem o cabeçalho', async () => {
     const admin = await newUser('Admin')
     const scene = await roundWith(admin, 1)
     const ana = await newSignedEvaluator(scene.project, 'Ana Avaliadora')
@@ -1231,7 +1187,7 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     auth.userId = ana.user
     const tree = await render(scene.project, scene.round)
 
-    expect(findElement(tree, RoundChangeChips)).toBeNull()
+    expect(findElement(tree, PageTitle)).toBeNull()
     const section = findElement(tree, Section)
     expect(section).toBeTruthy()
     const props = section!.props as { title: string; hint?: unknown }
@@ -1241,7 +1197,7 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     )
   })
 
-  it('a rodada aberta também diz o que mudou, junto do aviso de que a revisão abre no fechamento', async () => {
+  it('na rodada aberta, o ⓘ não tem a data de fechamento, e o aviso continua junto do de que a revisão abre no fechamento', async () => {
     const admin = await newUser('Admin')
     const first = await roundWith(admin, 1)
     const second = await nextRoundWith(admin, first, 1, {
@@ -1255,12 +1211,10 @@ describe('app/projects/[id]/rounds/[roundId] — a revisão de discordâncias', 
     const tree = await render(second.project, second.round)
 
     expect(textOf(tree)).toContain('abre quando ela fechar')
-    const text = changesTextOf(tree)
-    expect(text).toContain('Codebook v2')
-    expect(text).not.toContain('Codebook v1')
-    expect(text).toContain('Prompt v1 → v2')
+    expect(headerDetailsOf(tree)).toBe(`Fase ${PHASE_2} · Codebook v2 · Prompt v2`)
+    const text = headerTextOf(tree)
     expect(text).toContain(CODEBOOK_AND_PROMPT_NOTICE)
-    expect(text).not.toContain('fechada em')
+    expect(text).not.toContain('Fechada em')
   })
 
   const SENT =

@@ -1,10 +1,10 @@
 import type { DbExecutor } from '@/lib/db'
-import { Chip } from '@/app/components/ui/chip'
+import { PageTitle } from '@/app/components/ui/shell'
+import { InfoTooltip } from '@/app/components/ui/tooltip'
+import { formatDate } from '@/app/notifications/labels'
 import { listRounds, type RoundSummary } from './rounds'
 import { previousRoundOf, roundChanges, type RoundChanges } from './round-changes'
-import { RoundChangeChips } from './round-changes-note'
-import { roundInputSummary } from './preconditions'
-import { closedOn } from './reference-comparison-labels'
+import { RoundChangeNotice } from './round-changes-note'
 
 export type RoundHeader = { round: RoundSummary; changes: RoundChanges | null }
 
@@ -19,18 +19,21 @@ export async function loadRoundHeader(
   return { round, changes: roundChanges(round, previousRoundOf(rounds, round)) }
 }
 
-export function roundHeaderChips(header: RoundHeader) {
+export function roundHeaderDetails(round: RoundSummary): string {
+  const versions = `Fase ${round.phase} · Codebook v${round.codebookVersionNumber} · Prompt v${round.promptVersionNumber}`
+  return round.closedAt ? `${versions}\nFechada em ${formatDate(round.closedAt)}` : versions
+}
+
+export function roundHeaderTitle(header: RoundHeader) {
   const { round, changes } = header
 
   return (
-    <div className="mt-4">
-      <RoundChangeChips
-        round={round}
-        changes={changes}
-        phaseHelp={roundInputSummary(round.phase)}
-        leading={<Chip className="font-semibold text-ink">Rodada {round.roundNumber}</Chip>}
-        trailing={round.closedAt ? <Chip>{closedOn(round.closedAt)}</Chip> : null}
-      />
+    <div className="mt-4 flex flex-col gap-2">
+      <div className="flex items-center gap-1.5">
+        <PageTitle>Rodada {round.roundNumber}</PageTitle>
+        <InfoTooltip text={roundHeaderDetails(round)} />
+      </div>
+      {changes ? <RoundChangeNotice changes={changes} /> : null}
     </div>
   )
 }

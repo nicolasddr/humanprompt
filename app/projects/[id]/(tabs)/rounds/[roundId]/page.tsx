@@ -12,7 +12,7 @@ import {
 } from '../../../pipeline/responses'
 import { responseLabel } from '../../evaluate/queue'
 import { isOpen } from '../rounds'
-import { loadRoundHeader, roundHeaderChips, type RoundHeader } from '../round-header'
+import { loadRoundHeader, roundHeaderTitle, type RoundHeader } from '../round-header'
 import { AdminResponseCard } from '../sent-input'
 import { loadResponseNotes, type ResponseNote, type ReviewRound } from '../review'
 import {
@@ -183,7 +183,7 @@ export default async function RoundReviewPage({
         <BackLink href={`/projects/${id}/rounds`}>Voltar às rodadas</BackLink>
       </div>
 
-      {isAdmin && header ? roundHeaderChips(header) : null}
+      {isAdmin && header ? roundHeaderTitle(header) : null}
 
       <Section
         title={`Revisão de discordâncias da rodada ${round.roundNumber}`}

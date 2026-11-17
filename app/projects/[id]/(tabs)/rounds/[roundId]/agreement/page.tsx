@@ -8,7 +8,7 @@ import { excludedMemberIds, loadRoundOutliers } from '../../outliers'
 import { loadEvaluatorParticipation } from '../../participation'
 import { participationBefore } from '../../participation-labels'
 import { requireReviewAccess } from '../../review-access'
-import { loadRoundHeader, roundHeaderChips } from '../../round-header'
+import { loadRoundHeader, roundHeaderTitle } from '../../round-header'
 import { roundAgreementSection } from '../../round-agreement-section'
 import { roundQualitySection } from '../../round-quality-section'
 import { hasQuality } from '../../quality'
@@ -62,7 +62,7 @@ export default async function RoundAgreementPage({
         <BackLink href={`/projects/${id}/rounds`}>Voltar às rodadas</BackLink>
       </div>
 
-      {roundHeaderChips(header)}
+      {roundHeaderTitle(header)}
 
       <ReadingShortcuts
         links={readingShortcuts({

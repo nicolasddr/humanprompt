@@ -1,7 +1,6 @@
 import { Alert } from '@/app/components/ui/alert'
 import { Chip } from '@/app/components/ui/chip'
 import { InfoTooltip } from '@/app/components/ui/tooltip'
-import { LearnMore } from '@/app/components/ui/learn-more'
 import type { Change, RoundChanges } from './round-changes'
 import {
   CODEBOOK_AND_PROMPT_NOTICE,
@@ -37,7 +36,7 @@ function same(version: number): Change {
   return { changed: false, from: version, to: version }
 }
 
-function NoticeAlert({ changes }: { changes: RoundChanges }) {
+export function RoundChangeNotice({ changes }: { changes: RoundChanges }) {
   const notice = noticeOf(changes)
   if (!notice) return null
 
@@ -63,41 +62,29 @@ function helpOf(texts: string[]): string | undefined {
 export function RoundChangeChips({
   round,
   changes,
-  phaseHelp,
-  leading,
-  trailing,
 }: {
   round: ChipRound
   changes: RoundChanges | null
-  phaseHelp?: string
-  leading?: React.ReactNode
-  trailing?: React.ReactNode
 }) {
   const codebook = changes?.codebook ?? same(round.codebookVersionNumber)
   const prompt = changes?.prompt ?? same(round.promptVersionNumber)
   const phase = changes?.phase ?? same(round.phase)
-  const notes = changes ? phaseNotes(changes) : []
-  const phaseHelpText = helpOf(phaseHelp === undefined ? notes : [phaseHelp])
-  const phaseChip = (
-    <Chip>
-      {phaseChipText(phase)}
-      {phaseHelpText ? <InfoTooltip text={phaseHelpText} /> : null}
-    </Chip>
-  )
+  const phaseHelpText = helpOf(changes ? phaseNotes(changes) : [])
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-1.5">
-        {leading}
-        {phaseHelp !== undefined ? phaseChip : null}
         <ChangeChip change={codebook} text={codebookChipText(codebook)} />
         <ChangeChip change={prompt} text={promptChipText(prompt)} />
-        {phaseHelp === undefined && phase.changed ? phaseChip : null}
-        {trailing}
+        {phase.changed ? (
+          <Chip>
+            {phaseChipText(phase)}
+            {phaseHelpText ? <InfoTooltip text={phaseHelpText} /> : null}
+          </Chip>
+        ) : null}
       </div>
 
-      {changes ? <NoticeAlert changes={changes} /> : null}
-      {phaseHelp !== undefined && notes.length > 0 ? <LearnMore points={notes} /> : null}
+      {changes ? <RoundChangeNotice changes={changes} /> : null}
     </div>
   )
 }
