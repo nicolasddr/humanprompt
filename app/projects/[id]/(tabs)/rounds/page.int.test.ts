@@ -533,9 +533,17 @@ function qualityCellMarkupsOf(tree: unknown): string[] {
   return [...body.matchAll(/<td([^>]*)>(.*?)<\/td>/g)].map((match) => match[0])
 }
 
+const QUALITY_CELL_TIP = /<span[^>]*role="tooltip"[^>]*>(.*?)<\/span><\/td>/
+
+function qualityCellTipOf(markup: string): string {
+  const tip = markup.match(QUALITY_CELL_TIP)?.[1] ?? ''
+  return [...tip.matchAll(/<span[^>]*>(.*?)<\/span>/g)].map((line) => line[1]).join(' · ')
+}
+
 function qualityCellsOf(tree: unknown): string[] {
   return qualityCellMarkupsOf(tree).map((cell) =>
     cell
+      .replace(QUALITY_CELL_TIP, '</td>')
       .replace(/<[^>]*>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim(),
@@ -2300,8 +2308,8 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(cells[6]).toBe('0')
 
     const markups = qualityCellMarkupsOf(tree)
-    expect(markups[3]).toContain('title="Alto 75% (3) · Médio 0% (0) · Baixo 25% (1)"')
-    expect(markups[6]).toContain('title="Alto 0% (0) · Médio 50% (2) · Baixo 50% (2)"')
+    expect(qualityCellTipOf(markups[3])).toBe('Alto 75% (3) · Médio 0% (0) · Baixo 25% (1)')
+    expect(qualityCellTipOf(markups[6])).toBe('Alto 0% (0) · Médio 50% (2) · Baixo 50% (2)')
     expect(markups[3]).toContain('color-mix(in srgb, var(--color-quality-high) 66%, transparent)')
     expect(markups[3]).toContain('text-white')
     expect(markups[4]).toContain('text-ink')
@@ -2399,16 +2407,16 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(cells.slice(0, 3)).toEqual(['33', '25', CELL_UNRATED_LABEL])
     expect(cells.slice(3, 5)).toEqual(['60', '25'])
     expect(cells[8]).toBe(CELL_UNRATED_LABEL)
-    expect(qualityCellMarkupsOf(tree)[3]).toContain(
-      'title="Alto 60% (3) · Médio 0% (0) · Baixo 40% (2)"',
+    expect(qualityCellTipOf(qualityCellMarkupsOf(tree)[3])).toBe(
+      'Alto 60% (3) · Médio 0% (0) · Baixo 40% (2)',
     )
 
     const without = await render(scene.project, { qualidade: 'sem-outliers' })
     const withoutCells = qualityCellsOf(without)
     expect(withoutCells.slice(0, 3)).toEqual(['38', '25', CELL_UNRATED_LABEL])
     expect(withoutCells.slice(3, 5)).toEqual(['75', '25'])
-    expect(qualityCellMarkupsOf(without)[3]).toContain(
-      'title="Alto 75% (3) · Médio 0% (0) · Baixo 25% (1)"',
+    expect(qualityCellTipOf(qualityCellMarkupsOf(without)[3])).toBe(
+      'Alto 75% (3) · Médio 0% (0) · Baixo 25% (1)',
     )
 
     for (const markup of [...qualityCellMarkupsOf(tree), ...qualityCellMarkupsOf(without)]) {
@@ -2454,8 +2462,8 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     const tree = await render(scene.project)
 
     expect(qualityCellsOf(tree)[6]).toBe('0')
-    expect(qualityCellMarkupsOf(tree)[6]).toContain(
-      'title="Alto 0% (0) · Médio 0% (0) · Baixo 100% (1)"',
+    expect(qualityCellTipOf(qualityCellMarkupsOf(tree)[6])).toBe(
+      'Alto 0% (0) · Médio 0% (0) · Baixo 100% (1)',
     )
 
     const without = await render(scene.project, { qualidade: 'sem-outliers' })
@@ -3222,8 +3230,8 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     const tree = await render(scene.project)
 
     expect(qualityCellsOf(tree).slice(0, 3)).toEqual(['38', '25', CELL_UNRATED_LABEL])
-    expect(qualityCellMarkupsOf(tree)[0]).toContain(
-      'title="Alto 38% (3) · Médio 25% (2) · Baixo 38% (3)"',
+    expect(qualityCellTipOf(qualityCellMarkupsOf(tree)[0])).toBe(
+      'Alto 38% (3) · Médio 25% (2) · Baixo 38% (3)',
     )
   })
 

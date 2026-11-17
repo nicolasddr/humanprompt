@@ -12,6 +12,7 @@ import {
   matrixVersionNote,
 } from './agreement-labels'
 import { HowToRead } from './how-to-read'
+import { HeatTipCell } from './quality-heat-tip-cell'
 import { qualityByCriterion, qualityMatrix, type Quality, type QualityPair } from './quality'
 import {
   QUALITY_ALL_DEFINITIONS,
@@ -20,6 +21,7 @@ import {
   QUALITY_NOT_APPLICABLE,
   QUALITY_PER_RESPONSE_LEAD,
   definitionsCoverage,
+  wholeLevelText,
   wholeLevelsText,
 } from './quality-labels'
 import { formatWholeShare, wholeShareNumber } from './share'
@@ -48,6 +50,10 @@ function highOf(quality: Quality) {
 
 function levelsTitle(quality: Quality): string | undefined {
   return quality.rated ? wholeLevelsText(quality.levels) : undefined
+}
+
+function levelLines(quality: Quality): string[] {
+  return quality.rated ? quality.levels.map(wholeLevelText) : []
 }
 
 const NONE: ReadonlySet<string> = new Set<string>()
@@ -80,8 +86,8 @@ function HeatCell({ cell }: { cell: MeasuredCell<QualityPair> }) {
   }
 
   return (
-    <td
-      title={levelsTitle(cell.value.all)}
+    <HeatTipCell
+      lines={levelLines(cell.value.all)}
       style={heatStyle(high.share)}
       className={cx(
         cellClass,
@@ -90,7 +96,7 @@ function HeatCell({ cell }: { cell: MeasuredCell<QualityPair> }) {
       )}
     >
       {wholeShareNumber(high.share)}
-    </td>
+    </HeatTipCell>
   )
 }
 
