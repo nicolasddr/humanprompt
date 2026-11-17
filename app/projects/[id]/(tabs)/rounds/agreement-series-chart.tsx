@@ -92,9 +92,11 @@ export function AgreementSeriesChart({ series }: { series: AgreementSeries }) {
               ) : null}
             </span>
           ),
+          name: column.name,
           strokeClass: color.stroke,
           swatchClass: color.swatch,
           values: points.map((point) => alphaOf(point.cell)),
+          texts: points.map((point) => cellText(point.cell)),
         }
       })}
       pointLabel={(index) => roundLabel(series, index)}

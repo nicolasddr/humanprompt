@@ -48,11 +48,16 @@ export function ConcordanceSeriesChart({ points }: { points: readonly Concordanc
       lines={CONCORDANCE_LINES.map(({ key, label }) => ({
         key,
         label,
+        name: label,
         strokeClass: LINE_STROKE[key],
         swatchClass: DIVERGENCE_SEGMENT_CLASS[key],
         values: points.map((point) => point.profile?.[key] ?? null),
+        texts: points.map((point) =>
+          point.profile ? formatShare(point.profile[key]) : null,
+        ),
       }))}
       pointLabel={(index) => pointLabel(points[index])}
+      pointNotes={(index) => (points[index].profile ? [] : ['sem pares de notas'])}
     />
   )
 }

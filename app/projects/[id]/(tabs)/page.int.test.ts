@@ -1891,10 +1891,10 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
 
     const { chart, numbers } = qualitySeriesPartsOf(tree)
     expect(chart).toContain(
-      '<title>Rodada 3: Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1) · 8 notas</title>',
+      'Rodada 3: Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1) · 8 notas;',
     )
     expect(chart).toContain(
-      '<title>Rodada 4: Alto 0% (0) · Médio 25% (1) · Baixo 75% (3) · 4 notas</title>',
+      'Rodada 4: Alto 0% (0) · Médio 25% (1) · Baixo 75% (3) · 4 notas"',
     )
     expect(chart.match(/<polyline[^>]*class="stroke-quality-[a-z]+"/g)).toHaveLength(3)
     expect(textOfMarkup(chart)).toContain('R3 R4 Fase 3 Alto Médio Baixo')
@@ -1973,12 +1973,12 @@ describe('app/projects/[id]/page — escopo de visibilidade', () => {
 
     const { chart, numbers } = qualitySeriesPartsOf(tree)
     expect(chart).toContain(
-      '<title>Rodada 3: Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1) · 8 notas, ' +
-        `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: Alto 75% (3) · Médio 25% (1) · Baixo 0% (0) · 4 notas</title>`,
+      'Rodada 3: Alto 62,5% (5) · Médio 25% (2) · Baixo 12,5% (1) · 8 notas, ' +
+        `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: Alto 75% (3) · Médio 25% (1) · Baixo 0% (0) · 4 notas;`,
     )
     expect(chart).toMatch(/<polyline points="25,37\.5 75,100"[^>]*class="stroke-quality-high"/)
-    const unmarkedTitle = chart.slice(chart.indexOf('<title>Rodada 4'))
-    expect(unmarkedTitle.slice(0, unmarkedTitle.indexOf('</title>'))).not.toContain(
+    const unmarkedTitle = chart.slice(chart.indexOf('Rodada 4'))
+    expect(unmarkedTitle.slice(0, unmarkedTitle.indexOf('"'))).not.toContain(
       AGREEMENT_WITHOUT_OUTLIERS_LABEL,
     )
     expect(chart).not.toContain(AGREEMENT_ALL_LABEL)

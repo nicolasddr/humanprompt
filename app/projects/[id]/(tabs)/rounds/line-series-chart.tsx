@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { cx } from '@/app/components/ui/cx'
 import { phaseRuns } from './agreement-series'
+import { LineSeriesHover, type HoverPoint } from './line-series-hover'
 
 const CHART_SIZE = 100
 
@@ -9,9 +10,11 @@ type LinePoint = { roundId: string; roundNumber: number; phase: number }
 export type SeriesLine = {
   key: string
   label: ReactNode
+  name: string
   strokeClass: string
   swatchClass: string
   values: readonly (number | null)[]
+  texts: readonly (string | null)[]
 }
 
 export type SeriesTick = { value: number; label: string }
@@ -29,6 +32,7 @@ export function LineSeriesChart<T extends LinePoint>({
   ticks,
   reference,
   pointLabel,
+  pointNotes,
 }: {
   points: readonly T[]
   lines: readonly SeriesLine[]
@@ -36,6 +40,7 @@ export function LineSeriesChart<T extends LinePoint>({
   ticks: readonly SeriesTick[]
   reference?: SeriesReference
   pointLabel: (index: number) => string
+  pointNotes?: (index: number) => readonly string[]
 }) {
   const slot = CHART_SIZE / points.length
   const xOf = (index: number) => index * slot + slot / 2
@@ -44,6 +49,24 @@ export function LineSeriesChart<T extends LinePoint>({
   for (const run of runs.slice(0, -1)) {
     boundaries.push((boundaries.at(-1) ?? 0) + run.points.length)
   }
+
+  const hoverPoints: HoverPoint[] = points.map((point, index) => ({
+    title: `Rodada ${point.roundNumber}`,
+    subtitle: `Fase ${point.phase}`,
+    rows: lines.flatMap((line) => {
+      const value = line.texts[index]
+      return value === null
+        ? []
+        : [{ key: line.key, swatchClass: line.swatchClass, name: line.name, value }]
+    }),
+    notes: pointNotes?.(index) ?? [],
+    dots: lines.flatMap((line) => {
+      const value = line.values[index]
+      return value === null
+        ? []
+        : [{ key: line.key, swatchClass: line.swatchClass, top: yOf(value) }]
+    }),
+  }))
 
   const polyline = (values: readonly (number | null)[]) =>
     values
@@ -65,7 +88,7 @@ export function LineSeriesChart<T extends LinePoint>({
           ))}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="relative flex min-w-0 flex-1 flex-col gap-1">
           <svg
             role="img"
             aria-label={points.map((_, index) => pointLabel(index)).join('; ')}
@@ -132,7 +155,6 @@ export function LineSeriesChart<T extends LinePoint>({
 
               return (
                 <g key={point.roundId}>
-                  <title>{pointLabel(index)}</title>
                   {dots.map(({ line, value }) => (
                     <path
                       key={line.key}
@@ -147,6 +169,7 @@ export function LineSeriesChart<T extends LinePoint>({
               )
             })}
           </svg>
+          <LineSeriesHover points={hoverPoints} />
 
           <div aria-hidden className="flex w-full text-xs text-muted tabular-nums">
             {points.map((point) => (

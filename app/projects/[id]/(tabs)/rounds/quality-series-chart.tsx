@@ -27,9 +27,30 @@ const LINE_COLOR: Record<ScaleValue, { stroke: string; swatch: string }> = {
   low: { stroke: 'stroke-quality-low', swatch: 'bg-quality-low' },
 }
 
-function shareOf(quality: Quality, value: ScaleValue): number | null {
+function levelOf(quality: Quality, value: ScaleValue) {
   if (!quality.rated) return null
-  return quality.levels.find((level) => level.value === value)?.share ?? null
+  return quality.levels.find((level) => level.value === value) ?? null
+}
+
+function shareOf(quality: Quality, value: ScaleValue): number | null {
+  return levelOf(quality, value)?.share ?? null
+}
+
+function shareText(quality: Quality, value: ScaleValue): string | null {
+  const level = levelOf(quality, value)
+  return level ? `${formatShare(level.share)} (${level.count})` : null
+}
+
+function pointNotes(point: QualitySeriesPoint): string[] {
+  const { all, withoutOutliers } = point.pair
+  const notes = [all.rated ? qualityTotal(all.total) : QUALITY_UNRATED]
+  if (withoutOutliers) {
+    notes.push(
+      `${AGREEMENT_WITHOUT_OUTLIERS_LABEL}: ` +
+        qualityText(withoutOutliers, QUALITY_UNRATED_WITHOUT_OUTLIERS),
+    )
+  }
+  return notes
 }
 
 function qualityText(quality: Quality, unrated: string): string {
@@ -65,11 +86,14 @@ export function QualitySeriesChart({ points }: { points: readonly QualitySeriesP
         lines={SCALE.map((value) => ({
           key: value,
           label: scaleLabel(value),
+          name: scaleLabel(value),
           strokeClass: LINE_COLOR[value].stroke,
           swatchClass: LINE_COLOR[value].swatch,
           values: points.map((point) => shareOf(point.pair.all, value)),
+          texts: points.map((point) => shareText(point.pair.all, value)),
         }))}
         pointLabel={(index) => pointLabel(points[index])}
+        pointNotes={(index) => pointNotes(points[index])}
       />
 
       <Disclosure summary={QUALITY_SERIES_NUMBERS}>
