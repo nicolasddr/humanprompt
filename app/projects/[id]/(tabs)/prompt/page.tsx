@@ -99,9 +99,8 @@ export default async function ProjectPromptPage({
       {versions.length > 0 ? (
         <div id={HISTORY_ANCHOR} className="scroll-mt-4">
           <Section
-            title="Histórico de versões"
+            title="Histórico de Versões - Prompt"
             hint="Da mais recente para a mais antiga."
-            help="Abrir uma versão mostra o texto como estava nela, em leitura: versão congelada não é editável nem apagável."
           >
             <PromptHistory projectId={project.id} versions={versions} />
           </Section>

@@ -1,8 +1,7 @@
+import { Badge } from '@/app/components/ui/badge'
 import { ButtonLink } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
-import { VersionBadges, VersionMeta } from './version-history'
-import { PromptMetadataList } from './prompt-metadata'
-import { hasPromptMetadata, type PromptVersionSummary } from './prompt'
+import type { PromptVersionSummary } from './prompt'
 
 export function PromptHistory({
   projectId,
@@ -18,10 +17,16 @@ export function PromptHistory({
           <Card>
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
               <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <span className="text-sm font-semibold text-ink">
+                <span className="text-sm font-semibold break-words text-ink">
                   Versão {version.versionNumber}
+                  {version.name ? ` (${version.name})` : null}
                 </span>
-                <VersionBadges version={version} />
+                {version.isLatest || version.isOpen ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    {version.isLatest ? <Badge tone="accent">Em uso</Badge> : null}
+                    {version.isOpen ? <Badge tone="info">Em aberto</Badge> : null}
+                  </span>
+                ) : null}
               </span>
 
               <ButtonLink
@@ -29,19 +34,9 @@ export function PromptHistory({
                 variant="secondary"
                 size="sm"
               >
-                Ver texto
+                Ver prompt
               </ButtonLink>
             </div>
-
-            <div className="mt-1.5">
-              <VersionMeta version={version} />
-            </div>
-
-            {hasPromptMetadata(version) ? (
-              <div className="mt-2.5">
-                <PromptMetadataList version={version} />
-              </div>
-            ) : null}
           </Card>
         </li>
       ))}

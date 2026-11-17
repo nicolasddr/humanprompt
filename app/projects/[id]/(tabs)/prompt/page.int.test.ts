@@ -21,10 +21,7 @@ import ProjectPromptPage from '@/app/projects/[id]/(tabs)/prompt/page'
 import PromptVersionPage from '@/app/projects/[id]/(tabs)/prompt/[versionId]/page'
 import { PromptHistory } from '@/app/projects/[id]/pipeline/prompt-history'
 import { PromptMetadataList } from '@/app/projects/[id]/pipeline/prompt-metadata'
-import {
-  VersionBadges,
-  VersionMeta,
-} from '@/app/projects/[id]/pipeline/version-history'
+import { VersionBadges } from '@/app/projects/[id]/pipeline/version-history'
 import {
   PromptEditor,
   PromptForm,
@@ -154,7 +151,7 @@ describe('app/projects/[id]/prompt — a tela do prompt', () => {
     expect(props.versions.map((v) => v.versionNumber)).toEqual([3, 2, 1])
   })
 
-  it('cada linha mostra número, data, autor e os metadados preenchidos', async () => {
+  it('cada linha mostra o número com o nome entre parênteses, sem data, autor nem demais metadados', async () => {
     const admin = await newUser('Ana Pesquisadora')
     const project = await newProject(admin)
     await addPromptVersion(ownerDb, project, admin, {
@@ -168,19 +165,17 @@ describe('app/projects/[id]/prompt — a tela do prompt', () => {
     const [version] = props.versions
     expect(version.authorName).toBe('Ana Pesquisadora')
 
-    expect(textOf(PromptHistory(props))).toContain('Versão 1')
-
-    const metadataText = metadataTextOf(PromptHistory(props))
-    expect(metadataText).toContain('instrução direta')
-    expect(metadataText).toContain('pede a categoria e uma justificativa de uma linha')
-    expect(metadataText).toContain('primeira redação do prompt')
-
-    const metaText = textOf(VersionMeta({ version }))
-    expect(metaText).toContain(formatDate(version.createdAt))
-    expect(metaText).toContain('Ana Pesquisadora')
+    const listText = textOf(PromptHistory(props))
+    expect(listText).toContain('Versão 1 (instrução direta)')
+    expect(listText).toContain('Ver prompt')
+    expect(listText).not.toContain('Ver texto')
+    expect(listText).not.toContain('pede a categoria e uma justificativa de uma linha')
+    expect(listText).not.toContain('primeira redação do prompt')
+    expect(listText).not.toContain('Ana Pesquisadora')
+    expect(listText).not.toContain(formatDate(version.createdAt))
   })
 
-  it('o metadado vazio não deixa rótulo órfão na linha nem na versão', async () => {
+  it('o metadado vazio não deixa rótulo órfão na versão', async () => {
     const admin = await newUser('Admin')
     const project = await newProject(admin)
     const versionId = await addPromptVersion(ownerDb, project, admin, {
@@ -188,12 +183,6 @@ describe('app/projects/[id]/prompt — a tela do prompt', () => {
     })
 
     auth.userId = admin
-    const listText = metadataTextOf(PromptHistory(historyOf(await renderPrompt(project))))
-    expect(listText).toContain('Nome')
-    expect(listText).toContain('só o nome')
-    expect(listText).not.toContain('Descrição')
-    expect(listText).not.toContain('Registro de mudanças')
-
     const detailText = metadataTextOf(await renderVersion(project, versionId))
     expect(detailText).toContain('só o nome')
     expect(detailText).not.toContain('Descrição')
@@ -212,7 +201,7 @@ describe('app/projects/[id]/prompt — a tela do prompt', () => {
     ).toBeNull()
   })
 
-  it('fica claro qual é a vigente e se ela está em aberto ou já congelou', async () => {
+  it('a versão em uso tem chip e as antigas não mostram chip de congelada', async () => {
     const admin = await newUser('Admin')
     const project = await newProject(admin)
     await addPromptVersion(ownerDb, project, admin, {
@@ -226,16 +215,20 @@ describe('app/projects/[id]/prompt — a tela do prompt', () => {
 
     expect(current.isLatest).toBe(true)
     expect(current.isOpen).toBe(true)
-    expect(textOf(VersionBadges({ version: current }))).toContain('Vigente')
-    expect(textOf(VersionBadges({ version: current }))).toContain('Em aberto')
+    const currentText = textOf(PromptHistory({ projectId: project, versions: [current] }))
+    expect(currentText).toContain('Em uso')
+    expect(currentText).toContain('Em aberto')
+    expect(currentText).not.toContain('Vigente')
 
     expect(old.isLatest).toBe(false)
     expect(old.isOpen).toBe(false)
-    expect(textOf(VersionBadges({ version: old }))).toContain('Congelada')
-    expect(textOf(VersionBadges({ version: old }))).not.toContain('Vigente')
+    const oldText = textOf(PromptHistory({ projectId: project, versions: [old] }))
+    expect(oldText).not.toContain('Congelada')
+    expect(oldText).not.toContain('Em uso')
+    expect(oldText).not.toContain('Em aberto')
   })
 
-  it('a versão vigente já usada aparece como congelada', async () => {
+  it('a versão em uso já usada não mostra chip de congelada no histórico', async () => {
     const admin = await newUser('Admin')
     const project = await newProject(admin)
     await addPromptVersion(ownerDb, project, admin, { usedAt: new Date().toISOString() })
@@ -244,7 +237,10 @@ describe('app/projects/[id]/prompt — a tela do prompt', () => {
     const [version] = historyOf(await renderPrompt(project)).versions
     expect(version.isLatest).toBe(true)
     expect(version.isOpen).toBe(false)
-    expect(textOf(VersionBadges({ version }))).toContain('Congelada')
+    const text = textOf(PromptHistory({ projectId: project, versions: [version] }))
+    expect(text).toContain('Em uso')
+    expect(text).not.toContain('Congelada')
+    expect(text).not.toContain('Em aberto')
   })
 
   it('sem nenhuma versão, a tela não tem histórico nem link para ele; ambos aparecem a partir da versão 1', async () => {
