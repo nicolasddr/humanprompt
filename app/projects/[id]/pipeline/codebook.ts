@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, desc, eq } from 'drizzle-orm'
 import {
   ownerDb,
   type DbExecutor,
@@ -21,14 +21,7 @@ export type CodebookVersion = {
   usedAt: string | null
 }
 
-export type CodebookVersionCounts = {
-  definitionCount: number
-  criterionCount: number
-}
-
-export type CodebookVersionSummary = Summarized<
-  CodebookVersion & { authorName: string } & CodebookVersionCounts
->
+export type CodebookVersionSummary = Summarized<CodebookVersion & { authorName: string }>
 
 export type CodebookDefinition = {
   id: string
@@ -163,44 +156,6 @@ export async function loadRoundCodebooks(
   return codebooks
 }
 
-async function countsOf(
-  versionIds: string[],
-  db: DbExecutor,
-): Promise<Map<string, CodebookVersionCounts>> {
-  const counts = new Map<string, CodebookVersionCounts>(
-    versionIds.map((id) => [id, { definitionCount: 0, criterionCount: 0 }]),
-  )
-  if (versionIds.length === 0) return counts
-
-  const definitionRows = await db
-    .select({
-      versionId: codebookDefinitions.codebookVersionId,
-      total: count(),
-    })
-    .from(codebookDefinitions)
-    .where(inArray(codebookDefinitions.codebookVersionId, versionIds))
-    .groupBy(codebookDefinitions.codebookVersionId)
-
-  for (const row of definitionRows) {
-    counts.get(row.versionId)!.definitionCount = row.total
-  }
-
-  const criterionRows = await db
-    .select({
-      versionId: codebookCriteria.codebookVersionId,
-      total: count(),
-    })
-    .from(codebookCriteria)
-    .where(inArray(codebookCriteria.codebookVersionId, versionIds))
-    .groupBy(codebookCriteria.codebookVersionId)
-
-  for (const row of criterionRows) {
-    counts.get(row.versionId)!.criterionCount = row.total
-  }
-
-  return counts
-}
-
 export async function listCodebookVersions(
   projectId: string,
   db: DbExecutor = ownerDb,
@@ -213,14 +168,7 @@ export async function listCodebookVersions(
     .orderBy(desc(codebookVersions.versionNumber))
 
   const latest = versions[0] ?? null
-  const counts = await countsOf(
-    versions.map((version) => version.id),
-    db,
-  )
-
-  return versions.map((version) =>
-    summarize({ ...version, ...counts.get(version.id)! }, latest),
-  )
+  return versions.map((version) => summarize(version, latest))
 }
 
 export async function loadCodebookVersion(
@@ -244,13 +192,8 @@ export async function loadCodebookVersion(
 
   if (!version) return null
 
-  const counts = await countsOf([version.id], db)
-
   return {
-    version: summarize(
-      { ...version, ...counts.get(version.id)! },
-      await latestVersion(projectId, db),
-    ),
+    version: summarize(version, await latestVersion(projectId, db)),
     definitions: await loadDefinitions(version.id, db),
     criteria: await loadCriteria(version.id, db),
   }

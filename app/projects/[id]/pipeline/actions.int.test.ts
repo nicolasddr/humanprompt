@@ -34,11 +34,7 @@ import {
   wrongPhaseMessage,
 } from '@/app/projects/[id]/pipeline/preconditions'
 import { loadPipelineInputs } from '@/app/projects/[id]/pipeline/inputs'
-import {
-  listCodebookVersions,
-  loadCodebook,
-  loadCodebookVersion,
-} from '@/app/projects/[id]/pipeline/codebook'
+import { loadCodebook, loadCodebookVersion } from '@/app/projects/[id]/pipeline/codebook'
 import { SCALE, scaleLabel, type ScaleValue } from '@/app/projects/[id]/(tabs)/evaluate/scale'
 import {
   criteriaOfDefinition,
@@ -3817,42 +3813,6 @@ describe('app/projects/[id]/pipeline/actions — critérios do codebook', () => 
       })
     }
     expect(await versionsOf(project)).toHaveLength(0)
-  })
-
-  it('o histórico traz a contagem de definições e de critérios de cada versão', async () => {
-    const admin = await newUser('Admin')
-    const project = await newProject(admin)
-    await addCodebookVersion(ownerDb, project, admin, {
-      versionNumber: 1,
-      usedAt: new Date().toISOString(),
-      definitions: [{ title: 'Informacional', type: 'category' }],
-      generalCriteria: [{ name: 'Clareza' }],
-    })
-    await addCodebookVersion(ownerDb, project, admin, {
-      versionNumber: 2,
-      definitions: [
-        { title: 'Informacional', type: 'category', criteria: [{ name: 'Cita a fonte' }] },
-        { title: 'Transacional', type: 'category' },
-      ],
-      generalCriteria: [{ name: 'Clareza' }, { name: 'Objetividade' }],
-    })
-
-    const versions = await listCodebookVersions(project)
-    expect(
-      versions.map((v) => [v.versionNumber, v.definitionCount, v.criterionCount]),
-    ).toEqual([
-      [2, 2, 3],
-      [1, 1, 1],
-    ])
-  })
-
-  it('a versão sem definição nenhuma aparece no histórico com contagem zero', async () => {
-    const admin = await newUser('Admin')
-    const project = await newProject(admin)
-    await addCodebookVersion(ownerDb, project, admin, { definitions: [] })
-
-    const [version] = await listCodebookVersions(project)
-    expect([version.definitionCount, version.criterionCount]).toEqual([0, 0])
   })
 
   it('grava a descrição dos três níveis do critério', async () => {

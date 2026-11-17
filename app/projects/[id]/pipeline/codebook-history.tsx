@@ -1,6 +1,6 @@
+import { Badge } from '@/app/components/ui/badge'
 import { ButtonLink } from '@/app/components/ui/button'
 import { Card } from '@/app/components/ui/card'
-import { VersionBadges, VersionCounts, VersionMeta } from './version-history'
 import type { CodebookVersionSummary } from './codebook'
 
 export function CodebookHistory({
@@ -20,7 +20,12 @@ export function CodebookHistory({
                 <span className="text-sm font-semibold text-ink">
                   Versão {version.versionNumber}
                 </span>
-                <VersionBadges version={version} />
+                {version.isLatest || version.isOpen ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    {version.isLatest ? <Badge tone="accent">Em uso</Badge> : null}
+                    {version.isOpen ? <Badge tone="info">Em aberto</Badge> : null}
+                  </span>
+                ) : null}
               </span>
 
               <ButtonLink
@@ -28,16 +33,8 @@ export function CodebookHistory({
                 variant="secondary"
                 size="sm"
               >
-                Ver definições
+                Ver codebook
               </ButtonLink>
-            </div>
-
-            <div className="mt-1.5">
-              <VersionCounts version={version} />
-            </div>
-
-            <div className="mt-1.5">
-              <VersionMeta version={version} />
             </div>
 
             {version.note ? (

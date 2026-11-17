@@ -21,11 +21,7 @@ import ProjectCodebookPage from '@/app/projects/[id]/(tabs)/codebook/page'
 import CodebookVersionPage from '@/app/projects/[id]/(tabs)/codebook/[versionId]/page'
 import { CodebookHistory } from '@/app/projects/[id]/pipeline/codebook-history'
 import type { CodebookVersionSummary } from '@/app/projects/[id]/pipeline/codebook'
-import {
-  VersionBadges,
-  VersionCounts,
-  VersionMeta,
-} from '@/app/projects/[id]/pipeline/version-history'
+import { VersionBadges } from '@/app/projects/[id]/pipeline/version-history'
 import { DefinitionList } from '@/app/projects/[id]/pipeline/definition-list'
 import {
   CodebookEditor,
@@ -176,7 +172,7 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
     expect(props.versions.map((v) => v.versionNumber)).toEqual([3, 2, 1])
   })
 
-  it('cada linha mostra número, data, autor e a observação, quando houver', async () => {
+  it('cada linha mostra o número e a observação, sem data, autor nem contagens', async () => {
     const admin = await newUser('Ana Pesquisadora')
     const project = await newProject(admin)
     await addCodebookVersion(ownerDb, project, admin, {
@@ -191,10 +187,11 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
     const listText = textOf(CodebookHistory(props))
     expect(listText).toContain('Versão 1')
     expect(listText).toContain('separei “Transacional” de “Navegacional”')
-
-    const metaText = textOf(VersionMeta({ version }))
-    expect(metaText).toContain(formatDate(version.createdAt))
-    expect(metaText).toContain('Ana Pesquisadora')
+    expect(listText).toContain('Ver codebook')
+    expect(listText).not.toContain('Ana Pesquisadora')
+    expect(listText).not.toContain(formatDate(version.createdAt))
+    expect(listText).not.toContain('definiç')
+    expect(listText).not.toContain('critério')
   })
 
   it('a observação vazia não deixa rótulo órfão na linha', async () => {
@@ -208,7 +205,7 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
     expect(textOf(CodebookHistory(props))).toContain('Versão 1')
   })
 
-  it('fica claro qual é a vigente e se ela está em aberto ou já congelou', async () => {
+  it('a versão em uso tem chip e as antigas não mostram chip de congelada', async () => {
     const admin = await newUser('Admin')
     const project = await newProject(admin)
     await addCodebookVersion(ownerDb, project, admin, {
@@ -222,16 +219,20 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
 
     expect(current.isLatest).toBe(true)
     expect(current.isOpen).toBe(true)
-    expect(textOf(VersionBadges({ version: current }))).toContain('Vigente')
-    expect(textOf(VersionBadges({ version: current }))).toContain('Em aberto')
+    const currentText = textOf(CodebookHistory({ projectId: project, versions: [current] }))
+    expect(currentText).toContain('Em uso')
+    expect(currentText).toContain('Em aberto')
+    expect(currentText).not.toContain('Vigente')
 
     expect(old.isLatest).toBe(false)
     expect(old.isOpen).toBe(false)
-    expect(textOf(VersionBadges({ version: old }))).toContain('Congelada')
-    expect(textOf(VersionBadges({ version: old }))).not.toContain('Vigente')
+    const oldText = textOf(CodebookHistory({ projectId: project, versions: [old] }))
+    expect(oldText).not.toContain('Congelada')
+    expect(oldText).not.toContain('Em uso')
+    expect(oldText).not.toContain('Em aberto')
   })
 
-  it('a versão vigente já usada aparece como congelada', async () => {
+  it('a versão em uso já usada não mostra chip de congelada no histórico', async () => {
     const admin = await newUser('Admin')
     const project = await newProject(admin)
     await addCodebookVersion(ownerDb, project, admin, {
@@ -242,7 +243,10 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
     const [version] = historyOf(await renderCodebook(project)).versions
     expect(version.isLatest).toBe(true)
     expect(version.isOpen).toBe(false)
-    expect(textOf(VersionBadges({ version }))).toContain('Congelada')
+    const text = textOf(CodebookHistory({ projectId: project, versions: [version] }))
+    expect(text).toContain('Em uso')
+    expect(text).not.toContain('Congelada')
+    expect(text).not.toContain('Em aberto')
   })
 
   it('sem nenhuma versão, a tela não tem histórico; ele aparece a partir da versão 1', async () => {
@@ -257,7 +261,7 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
     expect(sectionTitles(emptyTree)).toEqual(['Definições'])
 
     const versionedTree = await renderCodebook(versioned)
-    expect(sectionTitles(versionedTree)).toEqual(['Definições', 'Histórico de versões'])
+    expect(sectionTitles(versionedTree)).toEqual(['Definições', 'Histórico de Versões - Codebook'])
     expect(historyOf(versionedTree).versions.map((v) => v.versionNumber)).toEqual([1])
   })
 
@@ -1185,45 +1189,5 @@ describe('app/projects/[id]/codebook — a tela do codebook', () => {
 
     expect(text).toContain('Alto: mantém a intenção da pergunta')
     expect(text).toContain('Baixo: muda de assunto')
-  })
-
-  it('cada linha do histórico traz a contagem de definições e de critérios', async () => {
-    const admin = await newUser('Admin')
-    const project = await newProject(admin, PHASE_2)
-    await addCodebookVersion(ownerDb, project, admin, {
-      definitions: [
-        {
-          title: 'Informacional',
-          type: 'category',
-          criteria: [{ name: 'Cita a fonte' }],
-        },
-        { title: 'Transacional', type: 'category' },
-      ],
-      generalCriteria: [{ name: 'Clareza' }, { name: 'Objetividade' }],
-    })
-
-    auth.userId = admin
-    const props = historyOf(await renderCodebook(project))
-    expect(props.versions[0].definitionCount).toBe(2)
-    expect(props.versions[0].criterionCount).toBe(3)
-
-    const text = textOf(VersionCounts({ version: props.versions[0] }))
-    expect(text).toContain('2 definições')
-    expect(text).toContain('3 critérios')
-  })
-
-  it('a versão sem critério nenhum aparece no histórico com a contagem zerada', async () => {
-    const admin = await newUser('Admin')
-    const project = await newProject(admin)
-    await addCodebookVersion(ownerDb, project, admin, {
-      definitions: [{ title: 'Informacional', type: 'category' }],
-    })
-
-    auth.userId = admin
-    const props = historyOf(await renderCodebook(project))
-    expect(props.versions[0].criterionCount).toBe(0)
-    expect(textOf(VersionCounts({ version: props.versions[0] }))).toBe(
-      '1 definição · 0 critérios',
-    )
   })
 })
