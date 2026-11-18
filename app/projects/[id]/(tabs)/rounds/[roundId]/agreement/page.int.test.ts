@@ -192,7 +192,7 @@ describe('app/projects/[id]/rounds/[roundId]/agreement — a concordância de um
     const fromRounds = agreementSectionOf(await renderRounds(project))
     const fromPage = agreementSectionOf(await render(project, rounds[1]))
 
-    expect(titleOf(fromPage)).toBe('Concordância e confiabilidade na rodada 2, fechada')
+    expect(titleOf(fromPage)).toBe('Concordância e Confiabilidade - Rodada 2, fechada')
     expect(
       renderToStaticMarkup(fromPage).replaceAll(
         `/projects/${project}/rounds/${rounds[1]}/agreement`,
@@ -230,7 +230,7 @@ describe('app/projects/[id]/rounds/[roundId]/agreement — a concordância de um
 
     auth.userId = admin
     const section = agreementSectionOf(await render(project, rounds[0]))
-    expect(titleOf(section)).toBe('Concordância e confiabilidade na rodada 1, fechada')
+    expect(titleOf(section)).toBe('Concordância e Confiabilidade - Rodada 1, fechada')
 
     const [notes] = findAll(section, AgreementNotes)
     expect((notes.props as Parameters<typeof AgreementNotes>[0]).outliers).toEqual([])

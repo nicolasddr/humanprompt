@@ -2502,7 +2502,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
 
     const agreement = findSection(tree, CriterionAgreementTable)!.props as SectionProps
     expect(findElement(agreement.hint, SampleLine)).toBeTruthy()
-    expect(agreement.help).toBe("Krippendorff's Alpha ordinal")
+    expect(agreement.help).toBeUndefined()
 
     const rounds = findSection(tree, RoundList)!.props as SectionProps
     expect(rounds.hint).toBeUndefined()
@@ -2514,7 +2514,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(quality.more).toBeUndefined()
   })
 
-  it('com a rodada aberta, o ⓘ da Concordância nomeia o coeficiente, e embaixo do título vem a amostra', async () => {
+  it('com a rodada aberta, a Concordância não tem ⓘ, e embaixo do título vem a amostra', async () => {
     const admin = await newUser('Admin')
     const scene = await roundWith(admin, 1)
 
@@ -2529,7 +2529,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
       `0 avaliadores · 0 respostas ${SMALL_SAMPLE_LABEL} i`,
     )
     expect(findElement(agreement.hint, SampleLine)).toBeTruthy()
-    expect(agreement.help).toBe("Krippendorff's Alpha ordinal")
+    expect(agreement.help).toBeUndefined()
   })
 
   it('a matriz e o painel continuam na tela depois que a rodada fecha', async () => {
@@ -3460,7 +3460,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(shortcutsOf(tree)?.links).toEqual([
       { href: '#concordancia', label: 'Concordância e confiabilidade' },
       { href: '#qualidade', label: 'Qualidade' },
-      { href: '#rodadas-do-projeto', label: 'Rodadas do projeto (1)' },
+      { href: '#rodadas-do-projeto', label: 'Histórico de Rodadas (1)' },
       {
         href: `/projects/${scene.project}/rounds/${scene.round}`,
         label: 'Revisão de discordâncias',
@@ -3478,7 +3478,7 @@ describe('app/projects/[id]/rounds — a área de rodadas do projeto', () => {
     expect(findSection(tree, QualityLine)).toBeNull()
     expect(shortcutsOf(tree)?.links).toEqual([
       { href: '#concordancia', label: 'Concordância e confiabilidade' },
-      { href: '#rodadas-do-projeto', label: 'Rodadas do projeto (1)' },
+      { href: '#rodadas-do-projeto', label: 'Histórico de Rodadas (1)' },
       {
         href: `/projects/${scene.project}/rounds/${scene.round}`,
         label: 'Revisão de discordâncias',

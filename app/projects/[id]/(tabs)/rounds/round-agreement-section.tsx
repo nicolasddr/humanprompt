@@ -26,8 +26,8 @@ export type AgreementRound = Pick<
 
 export function agreementSectionTitle(round: AgreementRound): string {
   return round.closedAt
-    ? `Concordância e confiabilidade na rodada ${round.roundNumber}, fechada`
-    : `Concordância e confiabilidade na rodada ${round.roundNumber}`
+    ? `Concordância e Confiabilidade - Rodada ${round.roundNumber}, fechada`
+    : `Concordância e Confiabilidade - Rodada ${round.roundNumber}`
 }
 
 export function roundAgreementSection({
@@ -81,7 +81,6 @@ export function roundAgreementSection({
       id={AGREEMENT_SECTION_ID}
       className="scroll-mt-6"
       title={agreementSectionTitle(round)}
-      help="Krippendorff's Alpha ordinal"
       hint={<SampleLine sample={sample} />}
     >
       <div className="flex flex-col gap-4">

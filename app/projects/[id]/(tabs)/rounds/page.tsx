@@ -223,7 +223,7 @@ export default async function ProjectRoundsPage({
     <Section
       id={ROUNDS_SECTION_ID}
       className="scroll-mt-6"
-      title="Rodadas do projeto"
+      title="Histórico de Rodadas"
     >
       <RoundList projectId={project.id} rounds={rounds} />
     </Section>

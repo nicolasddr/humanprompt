@@ -37,7 +37,7 @@ export function readingShortcuts({
     ...(agreement ? [{ href: `#${AGREEMENT_SECTION_ID}`, label: 'Concordância e confiabilidade' }] : []),
     ...(quality ? [{ href: `#${QUALITY_SECTION_ID}`, label: 'Qualidade' }] : []),
     ...(rounds !== undefined
-      ? [{ href: `#${ROUNDS_SECTION_ID}`, label: `Rodadas do projeto (${rounds})` }]
+      ? [{ href: `#${ROUNDS_SECTION_ID}`, label: `Histórico de Rodadas (${rounds})` }]
       : []),
     ...(review !== undefined ? [{ href: review, label: 'Revisão de discordâncias' }] : []),
   ]
