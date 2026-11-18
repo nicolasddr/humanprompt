@@ -15,17 +15,13 @@ export const REFERENCE_COMPARISON_HELP =
 
 export const COMPARISON_AGREEMENT_GROUP = 'ICR'
 
+export const COMPARISON_CONCORDANCE_GROUP = 'Concordância (notas iguais)'
+
 export const COMPARISON_QUALITY_GROUP = QUALITY_LABEL
 
 export const COMPARISON_TOTAL_ROW = 'Notas'
 
 export const COMPARISON_EMPTY = '—'
-
-export const COMPARISON_EMPTY_LEGEND = `${COMPARISON_EMPTY} poucas notas para calcular o ICR.`
-
-export const COMPARISON_ARROW = '→'
-
-export const COMPARISON_SIDES = `referência ${COMPARISON_ARROW} esta`
 
 export const COMPARISON_VIEW_LABEL = 'Notas usadas na comparação'
 
@@ -37,8 +33,8 @@ export const ALPHA_WORSE_DROP = 0.05
 
 export const SHARE_WORSE_POINTS = 10
 
-export function comparisonHeading(referenceNumber: number, roundNumber: number): string {
-  return `Rodada ${referenceNumber} ${COMPARISON_ARROW} Rodada ${roundNumber}`
+export function comparisonRoundHeading(roundNumber: number): string {
+  return `Rodada ${roundNumber}`
 }
 
 export type ComparisonRow = {
@@ -53,7 +49,7 @@ export type ComparisonRow = {
 
 export type ComparisonGroup = { key: string; label: string; rows: ComparisonRow[] }
 
-export type ComparisonTable = { groups: ComparisonGroup[]; fewNotes: boolean }
+export type ComparisonTable = { groups: ComparisonGroup[] }
 
 type Versions = { codebookVersionNumber: number; promptVersionNumber: number }
 
@@ -79,15 +75,21 @@ export function hasComparisonOutliers(sides: readonly ComparedRound[]): boolean 
   )
 }
 
-type Alpha = { text: string | null; value: number | null; few: boolean }
+type Measure = { text: string | null; value: number | null }
 
-function alphaOf(cell: MatrixCell | null): Alpha {
-  if (cell === null) return { text: null, value: null, few: false }
-  if (cell.state !== 'calculated' || !cell.agreement.calculable) {
-    return { text: null, value: null, few: true }
+const NO_MEASURE: Measure = { text: null, value: null }
+
+function alphaOf(cell: MatrixCell | null): Measure {
+  if (cell === null || cell.state !== 'calculated' || !cell.agreement.calculable) {
+    return NO_MEASURE
   }
   const text = formatAlpha(cell.agreement.alpha)
-  return { text, value: Number(text.replace(',', '.')), few: false }
+  return { text, value: Number(text.replace(',', '.')) }
+}
+
+function equalOf(cell: MatrixCell | null): Measure {
+  if (cell === null || cell.state !== 'calculated' || cell.profile === null) return NO_MEASURE
+  return { text: formatWholeShare(cell.profile.equal), value: cell.profile.equal }
 }
 
 function alphaWorse(reference: number | null, round: number | null): boolean {
@@ -95,7 +97,18 @@ function alphaWorse(reference: number | null, round: number | null): boolean {
   return Math.round((reference - round) * 1000) >= Math.round(ALPHA_WORSE_DROP * 1000)
 }
 
-function agreementGroup(sides: readonly ComparedRound[], view: ComparisonView) {
+function shareWorse(reference: number | null, round: number | null): boolean {
+  if (reference === null || round === null) return false
+  return wholePoints(reference) - wholePoints(round) >= SHARE_WORSE_POINTS
+}
+
+function criterionRows(
+  sides: readonly ComparedRound[],
+  view: ComparisonView,
+  prefix: string,
+  measure: (cell: MatrixCell | null) => Measure,
+  worse: (reference: number | null, round: number | null) => boolean,
+): ComparisonRow[] {
   const criteria = new Map<string, string>()
   for (const side of sides) {
     for (const { column } of side.agreement) {
@@ -104,25 +117,21 @@ function agreementGroup(sides: readonly ComparedRound[], view: ComparisonView) {
     }
   }
 
-  let fewNotes = false
-  const rows = [...criteria].map(([identity, name]): ComparisonRow => {
+  return [...criteria].map(([identity, name]): ComparisonRow => {
     const [reference, round] = sides.map((side) => {
       const match = side.agreement.find((row) => columnIdentity(row.column) === identity)
-      if (!match) return alphaOf(null)
-      return alphaOf(view === 'without-outliers' ? (match.withoutOutliers ?? match.cell) : match.cell)
+      if (!match) return measure(null)
+      return measure(view === 'without-outliers' ? (match.withoutOutliers ?? match.cell) : match.cell)
     })
-    fewNotes ||= reference.few || round.few
     return {
-      key: `agreement-${identity}`,
+      key: `${prefix}-${identity}`,
       label: name,
       secondary: false,
       reference: reference.text,
       round: round.text,
-      worse: alphaWorse(reference.value, round.value),
+      worse: worse(reference.value, round.value),
     }
   })
-
-  return { rows, fewNotes }
 }
 
 function qualityOf(side: ComparedRound, view: ComparisonView): Quality | null {
@@ -190,16 +199,19 @@ export function comparisonTable(
   view: ComparisonView = 'all',
 ): ComparisonTable {
   const sides = [reference, round]
-  const agreement = agreementGroup(sides, view)
+  const agreement = criterionRows(sides, view, 'agreement', alphaOf, alphaWorse)
+  const concordance = criterionRows(sides, view, 'concordance', equalOf, shareWorse)
 
   return {
     groups: [
-      ...(agreement.rows.length > 0
-        ? [{ key: 'agreement', label: COMPARISON_AGREEMENT_GROUP, rows: agreement.rows }]
+      ...(agreement.length > 0
+        ? [
+            { key: 'agreement', label: COMPARISON_AGREEMENT_GROUP, rows: agreement },
+            { key: 'concordance', label: COMPARISON_CONCORDANCE_GROUP, rows: concordance },
+          ]
         : []),
       { key: 'quality', label: COMPARISON_QUALITY_GROUP, rows: qualityGroup(sides, view) },
     ],
-    fewNotes: agreement.fewNotes,
   }
 }
 

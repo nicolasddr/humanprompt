@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import {
   COMPARISON_AGREEMENT_GROUP,
+  COMPARISON_CONCORDANCE_GROUP,
   COMPARISON_EMPTY,
   COMPARISON_QUALITY_GROUP,
   COMPARISON_TOTAL_ROW,
   REFERENCE_COMPARISON_HELP,
   comparedVersions,
-  comparisonHeading,
+  comparisonRoundHeading,
   comparisonTable,
   hasComparisonOutliers,
   type ComparisonTable,
@@ -17,7 +18,7 @@ import type { Quality, QualityPair } from '@/app/projects/[id]/(tabs)/rounds/qua
 import { scaleLabel } from '@/app/projects/[id]/(tabs)/evaluate/scale'
 import { ROUND_CLOSED } from '@/app/projects/[id]/(tabs)/rounds/round-status'
 import { PHASE_3, PHASE_4 } from '@/app/projects/[id]/pipeline/preconditions'
-import type { Agreement } from '@/lib/agreement'
+import type { Agreement, AgreementProfile } from '@/lib/agreement'
 
 function calculable(alpha: number): Agreement {
   return { calculable: true, alpha, units: 10, raters: 3 }
@@ -32,15 +33,24 @@ const NOT_CALCULABLE: Agreement = {
 
 type Kind = 'general' | 'per_response'
 
+function profile(equal: number): AgreementProfile {
+  return { equal, adjacent: 1 - equal, extreme: 0, shares: new Map() }
+}
+
 function criterion(
   name: string,
   all: Agreement | null,
   withoutOutliers: Agreement | null = null,
   kind: Kind = 'general',
+  equal: { all: number; withoutOutliers?: number } | null = null,
 ): RoundAgreements[number] {
-  const cell = (agreement: Agreement | null) =>
+  const cell = (agreement: Agreement | null, share: number | undefined) =>
     agreement
-      ? ({ state: 'calculated', agreement, profile: null } as const)
+      ? ({
+          state: 'calculated',
+          agreement,
+          profile: share === undefined ? null : profile(share),
+        } as const)
       : ({ state: 'unrated' } as const)
   return {
     column: {
@@ -50,8 +60,8 @@ function criterion(
       isPerResponse: kind === 'per_response',
       criteria: new Map(),
     },
-    cell: cell(all),
-    withoutOutliers: withoutOutliers ? cell(withoutOutliers) : null,
+    cell: cell(all, equal?.all),
+    withoutOutliers: withoutOutliers ? cell(withoutOutliers, equal?.withoutOutliers) : null,
   }
 }
 
@@ -117,7 +127,7 @@ function worse(table: ComparisonTable): string[] {
 }
 
 describe('app/projects/[id]/rounds/reference-comparison-labels — comparisonTable', () => {
-  it('dois grupos, ICR com o nome do critério e Qualidade com % inteira, sem contagem', () => {
+  it('três grupos, ICR e Concordância por critério e Qualidade com % inteira, sem contagem', () => {
     const reference = side(4, PHASE_3)
     const round = side(6, PHASE_4, {
       all: calculable(0.688),
@@ -127,24 +137,48 @@ describe('app/projects/[id]/rounds/reference-comparison-labels — comparisonTab
     const table = comparisonTable(reference, round)
     expect(table.groups.map((group) => group.label)).toEqual([
       COMPARISON_AGREEMENT_GROUP,
+      COMPARISON_CONCORDANCE_GROUP,
       COMPARISON_QUALITY_GROUP,
     ])
     expect(rows(table)).toEqual([
       ['Clareza', '0,741', '0,688'],
+      ['Clareza', COMPARISON_EMPTY, COMPARISON_EMPTY],
       [scaleLabel('high'), '63%', '50%'],
       [scaleLabel('medium'), '25%', '34%'],
       [scaleLabel('low'), '13%', '16%'],
       [COMPARISON_TOTAL_ROW, '40', '32'],
     ])
-    expect(table.fewNotes).toBe(false)
+  })
+
+  it('a Concordância mostra a % inteira de notas iguais de cada critério, também sem outliers', () => {
+    const reference = side(4, PHASE_3, {
+      agreement: [
+        criterion('Clareza', calculable(0.741), calculable(0.802), 'general', {
+          all: 0.8,
+          withoutOutliers: 0.856,
+        }),
+      ],
+    })
+    const round = side(6, PHASE_4, {
+      agreement: [criterion('Clareza', NOT_CALCULABLE, null, 'general', { all: 0.5 })],
+    })
+
+    const concordance = (view: 'all' | 'without-outliers') =>
+      comparisonTable(reference, round, view).groups.find(
+        (group) => group.label === COMPARISON_CONCORDANCE_GROUP,
+      )!.rows
+    expect(concordance('all').map((row) => [row.reference, row.round])).toEqual([['80%', '50%']])
+    expect(concordance('without-outliers').map((row) => [row.reference, row.round])).toEqual([
+      ['86%', '50%'],
+    ])
   })
 
   it('as linhas de Alto, Médio e Baixo levam o nível, e só Notas fica em segundo plano', () => {
     const table = comparisonTable(side(4, PHASE_3), side(6, PHASE_4))
     const all = table.groups.flatMap((group) => group.rows)
 
-    expect(all.map((row) => row.level ?? null)).toEqual([null, 'high', 'medium', 'low', null])
-    expect(all.map((row) => row.secondary)).toEqual([false, false, false, false, true])
+    expect(all.map((row) => row.level ?? null)).toEqual([null, null, 'high', 'medium', 'low', null])
+    expect(all.map((row) => row.secondary)).toEqual([false, false, false, false, false, true])
   })
 
   it('sem outliers troca todos os números, e o lado sem outlier repete os de todas as notas', () => {
@@ -157,6 +191,7 @@ describe('app/projects/[id]/rounds/reference-comparison-labels — comparisonTab
     expect(hasComparisonOutliers([reference, round])).toBe(true)
     expect(rows(comparisonTable(reference, round, 'without-outliers'))).toEqual([
       ['Clareza', '0,802', '0,688'],
+      ['Clareza', COMPARISON_EMPTY, COMPARISON_EMPTY],
       [scaleLabel('high'), '67%', '63%'],
       [scaleLabel('medium'), '27%', '25%'],
       [scaleLabel('low'), '7%', '13%'],
@@ -169,7 +204,7 @@ describe('app/projects/[id]/rounds/reference-comparison-labels — comparisonTab
     expect(hasComparisonOutliers([side(4, PHASE_3), side(6, PHASE_4)])).toBe(false)
   })
 
-  it('ICR não calculável ou sem nota vira traço e liga a legenda; Qualidade sem nota vira traço', () => {
+  it('ICR não calculável ou sem nota vira traço; Qualidade sem nota vira traço', () => {
     const reference = side(4, PHASE_3, {
       all: NOT_CALCULABLE,
       quality: { all: { rated: false, total: 0 }, withoutOutliers: null, excluded: 0 },
@@ -179,23 +214,22 @@ describe('app/projects/[id]/rounds/reference-comparison-labels — comparisonTab
     const table = comparisonTable(reference, round)
     expect(rows(table)).toEqual([
       ['Clareza', COMPARISON_EMPTY, '0,741'],
+      ['Clareza', COMPARISON_EMPTY, COMPARISON_EMPTY],
       [scaleLabel('high'), COMPARISON_EMPTY, '63%'],
       [scaleLabel('medium'), COMPARISON_EMPTY, '25%'],
       [scaleLabel('low'), COMPARISON_EMPTY, '13%'],
       [COMPARISON_TOTAL_ROW, COMPARISON_EMPTY, '40'],
     ])
-    expect(table.fewNotes).toBe(true)
   })
 
   it('um lado sem Qualidade mostra o traço nas linhas de Qualidade', () => {
     const table = comparisonTable(side(4, PHASE_3, { quality: null }), side(6, PHASE_4))
-    expect(rows(table).slice(1).map((row) => row[1])).toEqual([
+    expect(rows(table).slice(2).map((row) => row[1])).toEqual([
       COMPARISON_EMPTY,
       COMPARISON_EMPTY,
       COMPARISON_EMPTY,
       COMPARISON_EMPTY,
     ])
-    expect(table.fewNotes).toBe(false)
   })
 })
 
@@ -222,18 +256,9 @@ describe('app/projects/[id]/rounds/reference-comparison-labels — ICR por crit�
       ['Diversity', COMPARISON_EMPTY, '0,611'],
       ['Fluência', COMPARISON_EMPTY, COMPARISON_EMPTY],
     ])
-    expect(table.fewNotes).toBe(true)
   })
 
-  it('critério ausente num dos lados não liga a legenda de poucas notas', () => {
-    const reference = side(4, PHASE_3, { agreement: [criterion('Relevance', calculable(0.5))] })
-    const round = side(6, PHASE_4, {
-      agreement: [criterion('Relevance', calculable(0.5)), criterion('Tone', calculable(0.7))],
-    })
-    expect(comparisonTable(reference, round).fewNotes).toBe(false)
-  })
-
-  it('sem critério em nenhum lado, o grupo do ICR some', () => {
+  it('sem critério em nenhum lado, os grupos do ICR e da Concordância somem', () => {
     const table = comparisonTable(
       side(4, PHASE_3, { agreement: [] }),
       side(6, PHASE_4, { agreement: [] }),
@@ -255,6 +280,22 @@ describe('app/projects/[id]/rounds/reference-comparison-labels — piora', () =>
     expect(worse(pair(0.584, 0.535))).toEqual([])
     expect(worse(pair(0.5844, 0.5336))).toEqual(['Clareza'])
     expect(worse(pair(0.584, 0.7))).toEqual([])
+  })
+
+  it('a Concordância piora quando cai 10 pontos ou mais, pelas % inteiras da tela', () => {
+    const concordance = (reference: number, round: number) =>
+      comparisonTable(
+        side(4, PHASE_3, {
+          agreement: [criterion('Clareza', calculable(0.7), null, 'general', { all: reference })],
+        }),
+        side(6, PHASE_4, {
+          agreement: [criterion('Clareza', calculable(0.7), null, 'general', { all: round })],
+        }),
+      )
+    expect(worse(concordance(0.8, 0.7))).toEqual(['Clareza'])
+    expect(worse(concordance(0.745, 0.645))).toEqual(['Clareza'])
+    expect(worse(concordance(0.744, 0.646))).toEqual([])
+    expect(worse(concordance(0.5, 0.9))).toEqual([])
   })
 
   it('sem α de um dos lados, não há piora', () => {
@@ -291,8 +332,8 @@ describe('app/projects/[id]/rounds/reference-comparison-labels — piora', () =>
 })
 
 describe('app/projects/[id]/rounds/reference-comparison-labels — cabeçalho', () => {
-  it('o cabeçalho vai da referência para a rodada atual', () => {
-    expect(comparisonHeading(4, 6)).toBe('Rodada 4 → Rodada 6')
+  it('cada coluna leva o número da sua rodada, sem seta', () => {
+    expect(comparisonRoundHeading(6)).toBe('Rodada 6')
   })
 
   it('com as mesmas versões nas duas rodadas, nada aparece', () => {

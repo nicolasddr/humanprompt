@@ -41,15 +41,15 @@ import { scaleLabel } from '@/app/projects/[id]/(tabs)/evaluate/scale'
 import { ReferenceComparisonPanel } from '@/app/projects/[id]/(tabs)/rounds/reference-comparison-panel'
 import {
   COMPARISON_AGREEMENT_GROUP,
-  COMPARISON_ARROW,
+  COMPARISON_CONCORDANCE_GROUP,
+  COMPARISON_EMPTY,
   COMPARISON_QUALITY_GROUP,
-  COMPARISON_SIDES,
   COMPARISON_TOTAL_ROW,
   COMPARISON_VIEW_ALL,
   COMPARISON_VIEW_WITHOUT_OUTLIERS,
   REFERENCE_COMPARISON_HELP,
   REFERENCE_COMPARISON_TITLE,
-  comparisonHeading,
+  comparisonRoundHeading,
   noReferenceMessage,
 } from '@/app/projects/[id]/(tabs)/rounds/reference-comparison-labels'
 import {
@@ -278,8 +278,14 @@ function alphaText(cell: MatrixCell | null | undefined): string | null {
     : null
 }
 
-function pairText(before: string | null, after: string | null): string {
-  return `${before} ${COMPARISON_ARROW} ${after}`
+function equalText(cell: MatrixCell | null | undefined): string | null {
+  return cell?.state === 'calculated' && cell.profile !== null
+    ? formatWholeShare(cell.profile.equal)
+    : null
+}
+
+function pairText(before: string | null, after: string | null): string[] {
+  return [before ?? COMPARISON_EMPTY, after ?? COMPARISON_EMPTY]
 }
 
 type Side = Extract<ComparisonProps['comparison'], { kind: 'compared' }>['round']
@@ -289,11 +295,13 @@ function sideValues(side: Side, view: 'all' | 'without-outliers') {
     view === 'without-outliers'
       ? (side.quality?.withoutOutliers ?? side.quality?.all)
       : side.quality?.all
+  const cells = ['Clareza', 'Profundidade'].map((name) => {
+    const row = side.agreement.find(({ column }) => column.name === name)
+    return view === 'without-outliers' ? (row?.withoutOutliers ?? row?.cell) : row?.cell
+  })
   return {
-    alphas: ['Clareza', 'Profundidade'].map((name) => {
-      const row = side.agreement.find(({ column }) => column.name === name)
-      return alphaText(view === 'without-outliers' ? (row?.withoutOutliers ?? row?.cell) : row?.cell)
-    }),
+    alphas: cells.map(alphaText),
+    equals: cells.map(equalText),
     levels: levelCells(quality),
     total: quality?.rated ? String(quality.total) : null,
   }
@@ -306,14 +314,17 @@ function expectSides(tree: unknown, view: 'all' | 'without-outliers') {
   const round = sideValues(comparison.round, view)
   expect(tableOf(tree).slice(1)).toEqual([
     [COMPARISON_AGREEMENT_GROUP],
-    ['Clareza', pairText(reference.alphas[0], round.alphas[0])],
-    ['Profundidade', pairText(reference.alphas[1], round.alphas[1])],
+    ['Clareza', ...pairText(reference.alphas[0], round.alphas[0])],
+    ['Profundidade', ...pairText(reference.alphas[1], round.alphas[1])],
+    [COMPARISON_CONCORDANCE_GROUP],
+    ['Clareza', ...pairText(reference.equals[0], round.equals[0])],
+    ['Profundidade', ...pairText(reference.equals[1], round.equals[1])],
     [COMPARISON_QUALITY_GROUP],
     ...(['high', 'medium', 'low'] as const).map((value, index) => [
       scaleLabel(value),
-      pairText(reference.levels[index], round.levels[index]),
+      ...pairText(reference.levels[index], round.levels[index]),
     ]),
-    [COMPARISON_TOTAL_ROW, pairText(reference.total, round.total)],
+    [COMPARISON_TOTAL_ROW, ...pairText(reference.total, round.total)],
   ])
   return { reference, round }
 }
@@ -536,7 +547,7 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     expect(text).not.toContain(COMPARISON_VIEW_WITHOUT_OUTLIERS)
 
     const [heading] = tableOf(tree)
-    expect(heading).toEqual(['', `${comparisonHeading(1, 2)} ${COMPARISON_SIDES}`])
+    expect(heading).toEqual(['', comparisonRoundHeading(1), comparisonRoundHeading(2)])
   })
 
   it('com a rodada da Fase 4 aberta, o bloco aparece e o lado dela diz que está aberta', async () => {
@@ -553,11 +564,11 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     expect(comparison.round.closedAt).toBeNull()
 
     const [heading] = tableOf(tree)
-    expect(heading[1]).toBe(`${comparisonHeading(1, 2)} ${COMPARISON_SIDES}`)
+    expect(heading.slice(1)).toEqual([comparisonRoundHeading(1), comparisonRoundHeading(2)])
     expect(markupTextOf(comparisonElementOf(tree))).not.toContain('Aberta')
   })
 
-  it('cada linha leva o valor da referência e o da rodada, em dois grupos, sem linha de outlier', async () => {
+  it('cada linha leva o valor da referência e o da rodada, em três grupos, sem linha de outlier', async () => {
     const admin = await newUser('Admin')
     const scene = await basicScene(admin)
 
@@ -567,6 +578,7 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
 
     for (const side of [reference, round]) {
       expect(side.alphas.every((alpha) => alpha !== null)).toBe(true)
+      expect(side.equals.every((equal) => equal !== null)).toBe(true)
       expect(side.levels).toHaveLength(3)
     }
     expect(withoutOutliersRows(tree)).toEqual([])
