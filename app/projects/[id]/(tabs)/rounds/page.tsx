@@ -51,8 +51,12 @@ import { referenceComparison } from './reference-comparison'
 import {
   REFERENCE_COMPARISON_HELP,
   REFERENCE_COMPARISON_TITLE,
-  referenceComparisonHint,
 } from './reference-comparison-labels'
+import {
+  REFERENCE_COMPARISON_SECTION_ID,
+  parseComparisonView,
+  withComparisonView,
+} from './comparison-view'
 import { ReferenceComparisonPanel } from './reference-comparison-panel'
 import { PHASE_4 } from '../../pipeline/preconditions'
 import { llmModel } from '@/lib/ai'
@@ -73,6 +77,7 @@ export default async function ProjectRoundsPage({
     ordem?: string | string[]
     pagina?: string | string[]
     qualidade?: string | string[]
+    comparacao?: string | string[]
   }>
 }) {
   const { id } = await params
@@ -188,6 +193,8 @@ export default async function ProjectRoundsPage({
     : undefined
   const roundsHref = `/projects/${project.id}/rounds`
   const qualityView = parseQualityView(query.qualidade)
+  const comparisonView = parseComparisonView(query.comparacao)
+  const criterionHref = withCriterion(roundsHref, query.criterio ?? null)
   const generating = query.gerar !== undefined
 
   const codebookVersionNumber = codebook?.version?.versionNumber ?? null
@@ -303,20 +310,16 @@ export default async function ProjectRoundsPage({
 
       {focusRound && focusComparison && focusComparison.kind !== 'not_phase_4' ? (
         <Section
+          id={REFERENCE_COMPARISON_SECTION_ID}
+          className="scroll-mt-6"
           title={REFERENCE_COMPARISON_TITLE}
-          hint={
-            focusComparison.kind === 'compared'
-              ? referenceComparisonHint(
-                  focusRound.roundNumber,
-                  focusComparison.reference.roundNumber,
-                )
-              : undefined
-          }
           help={REFERENCE_COMPARISON_HELP}
         >
           <ReferenceComparisonPanel
             roundNumber={focusRound.roundNumber}
             comparison={focusComparison}
+            view={comparisonView}
+            href={withQualityView(criterionHref, qualityView)}
           />
         </Section>
       ) : null}
@@ -330,7 +333,7 @@ export default async function ProjectRoundsPage({
             definitions: focusDefinitions,
             criteria: focusCriteria,
             ...(query.criterio ? { criterion: query.criterio } : {}),
-            href: withQualityView(roundsHref, qualityView),
+            href: withComparisonView(withQualityView(roundsHref, qualityView), comparisonView),
             ...(focusParticipation ? { participation: focusParticipation } : {}),
           })
         : null}
@@ -343,7 +346,7 @@ export default async function ProjectRoundsPage({
             definitions: focusDefinitions,
             criteria: focusCriteria,
             view: qualityView,
-            href: withCriterion(roundsHref, query.criterio ?? null),
+            href: withComparisonView(criterionHref, comparisonView),
           })
         : null}
 

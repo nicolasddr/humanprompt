@@ -35,20 +35,28 @@ import {
 } from '@/app/projects/[id]/(tabs)/rounds/agreement-matrix'
 import { OpenRoundCard } from '@/app/projects/[id]/(tabs)/rounds/open-round-card'
 import { QualityLine } from '@/app/projects/[id]/(tabs)/rounds/quality-line'
-import { formatShare } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
+import { formatWholeShare } from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
 import type { Quality } from '@/app/projects/[id]/(tabs)/rounds/quality'
 import { scaleLabel } from '@/app/projects/[id]/(tabs)/evaluate/scale'
 import { ReferenceComparisonPanel } from '@/app/projects/[id]/(tabs)/rounds/reference-comparison-panel'
 import {
-  COMPARISON_AGREEMENT_ROW,
-  COMPARISON_EMPTY,
+  COMPARISON_AGREEMENT_GROUP,
+  COMPARISON_ARROW,
+  COMPARISON_QUALITY_GROUP,
+  COMPARISON_SIDES,
   COMPARISON_TOTAL_ROW,
+  COMPARISON_VIEW_ALL,
+  COMPARISON_VIEW_WITHOUT_OUTLIERS,
   REFERENCE_COMPARISON_HELP,
   REFERENCE_COMPARISON_TITLE,
-  comparisonAgreementRow,
+  comparisonHeading,
   noReferenceMessage,
-  referenceComparisonHint,
 } from '@/app/projects/[id]/(tabs)/rounds/reference-comparison-labels'
+import {
+  COMPARISON_VIEW_PARAM,
+  COMPARISON_VIEW_WITHOUT_OUTLIERS as COMPARISON_VIEW_WITHOUT_OUTLIERS_VALUE,
+} from '@/app/projects/[id]/(tabs)/rounds/comparison-view'
+import type { MatrixCell } from '@/app/projects/[id]/(tabs)/rounds/agreement-matrix'
 import {
   AGREEMENT_BANDS,
   AGREEMENT_WITHOUT_OUTLIERS_LABEL,
@@ -177,11 +185,15 @@ type ComparisonProps = Parameters<typeof ReferenceComparisonPanel>[0]
 type GuidanceProps = Parameters<typeof ReadingGuidanceNote>[0]
 type CodebookShape = Parameters<typeof addCodebookVersion>[3]
 
-function render(id: string) {
+function render(id: string, query: Record<string, string> = {}) {
   return ProjectRoundsPage({
     params: Promise.resolve({ id }),
-    searchParams: Promise.resolve({}),
+    searchParams: Promise.resolve(query),
   })
+}
+
+function renderWithoutOutliers(id: string) {
+  return render(id, { [COMPARISON_VIEW_PARAM]: COMPARISON_VIEW_WITHOUT_OUTLIERS_VALUE })
 }
 
 function listOf(tree: unknown): ListProps {
@@ -251,17 +263,59 @@ function tableOf(tree: unknown): string[][] {
   )
 }
 
-function rowOf(tree: unknown, label: string): string[] | undefined {
-  return tableOf(tree).find((row) => row[0] === label)
-}
-
 function withoutOutliersRows(tree: unknown): string[][] {
   return tableOf(tree).filter((row) => row[0].endsWith(AGREEMENT_WITHOUT_OUTLIERS_LABEL))
 }
 
 function levelCells(quality: Quality | null | undefined): string[] {
   if (!quality?.rated) return []
-  return quality.levels.map((level) => `${formatShare(level.share)} (${level.count})`)
+  return quality.levels.map((level) => formatWholeShare(level.share))
+}
+
+function alphaText(cell: MatrixCell | null | undefined): string | null {
+  return cell?.state === 'calculated' && cell.agreement.calculable
+    ? formatAlpha(cell.agreement.alpha)
+    : null
+}
+
+function pairText(before: string | null, after: string | null): string {
+  return `${before} ${COMPARISON_ARROW} ${after}`
+}
+
+type Side = Extract<ComparisonProps['comparison'], { kind: 'compared' }>['round']
+
+function sideValues(side: Side, view: 'all' | 'without-outliers') {
+  const quality =
+    view === 'without-outliers'
+      ? (side.quality?.withoutOutliers ?? side.quality?.all)
+      : side.quality?.all
+  return {
+    alphas: ['Clareza', 'Profundidade'].map((name) => {
+      const row = side.agreement.find(({ column }) => column.name === name)
+      return alphaText(view === 'without-outliers' ? (row?.withoutOutliers ?? row?.cell) : row?.cell)
+    }),
+    levels: levelCells(quality),
+    total: quality?.rated ? String(quality.total) : null,
+  }
+}
+
+function expectSides(tree: unknown, view: 'all' | 'without-outliers') {
+  const { comparison } = comparisonOf(tree)
+  if (comparison.kind !== 'compared') throw new Error('deveria comparar')
+  const reference = sideValues(comparison.reference, view)
+  const round = sideValues(comparison.round, view)
+  expect(tableOf(tree).slice(1)).toEqual([
+    [COMPARISON_AGREEMENT_GROUP],
+    ['Clareza', pairText(reference.alphas[0], round.alphas[0])],
+    ['Profundidade', pairText(reference.alphas[1], round.alphas[1])],
+    [COMPARISON_QUALITY_GROUP],
+    ...(['high', 'medium', 'low'] as const).map((value, index) => [
+      scaleLabel(value),
+      pairText(reference.levels[index], round.levels[index]),
+    ]),
+    [COMPARISON_TOTAL_ROW, pairText(reference.total, round.total)],
+  ])
+  return { reference, round }
 }
 
 const JUDGMENT_WORDS = [
@@ -312,12 +366,15 @@ const PHASE_4_GUIDANCE_TEXTS = [
   ...REASONS.map((reason) => phase4NotCalculableGuidance(reason, WEAKEST)),
 ]
 
-function expectNoJudgment(element: ReactElement) {
+function expectNoJudgment(element: ReactElement, scope?: RegExp) {
   const text = markupTextOf(element).toLowerCase()
   for (const word of JUDGMENT_WORDS) expect(text).not.toContain(word)
   expect(text).not.toMatch(/[+−]\s*\d/)
 
-  const classes = classNamesOf(element)
+  const markup = scope ? (renderToStaticMarkup(element).match(scope)?.[0] ?? '') : null
+  const classes = markup === null
+    ? classNamesOf(element)
+    : [...markup.matchAll(/class="([^"]*)"/g)].map((match) => match[1])
   expect(classes.length).toBeGreaterThan(0)
   for (const className of classes) {
     for (const tone of JUDGMENT_TONES) expect(className).not.toContain(tone)
@@ -441,7 +498,7 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     await cleanup(projs, users)
   })
 
-  it('o bloco aparece logo abaixo da orientação e nomeia a rodada de referência, a data e as versões', async () => {
+  it('o bloco aparece logo abaixo da orientação, com a referência no cabeçalho e sem frase acima', async () => {
     const admin = await newUser('Admin')
     const scene = await basicScene(admin)
 
@@ -468,20 +525,18 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
       more?: { points: readonly string[] }
     }
     expect(props.title).toBe(REFERENCE_COMPARISON_TITLE)
-    expect(props.hint).toBe(referenceComparisonHint(2, 1))
+    expect(props.hint).toBeUndefined()
     expect(props.help).toBe(REFERENCE_COMPARISON_HELP)
     expect(props.more).toBeUndefined()
 
     const text = markupTextOf(comparisonElementOf(tree))
-    expect(text).not.toContain('Rodada de referência:')
-    expect(text.split('Codebook v3 · Prompt v2 nas duas')).toHaveLength(2)
+    expect(text).not.toContain('Codebook v')
+    expect(text).not.toContain('Fase')
+    expect(text).not.toContain('fechada em')
+    expect(text).not.toContain(COMPARISON_VIEW_WITHOUT_OUTLIERS)
 
     const [heading] = tableOf(tree)
-    expect(heading).toEqual([
-      '',
-      'Rodada 1 Fase 3 · referência fechada em 15/01/2026',
-      'Rodada 2 Fase 4 fechada em 15/02/2026',
-    ])
+    expect(heading).toEqual(['', `${comparisonHeading(1, 2)} ${COMPARISON_SIDES}`])
   })
 
   it('com a rodada da Fase 4 aberta, o bloco aparece e o lado dela diz que está aberta', async () => {
@@ -498,105 +553,79 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     expect(comparison.round.closedAt).toBeNull()
 
     const [heading] = tableOf(tree)
-    expect(heading[2]).toBe('Rodada 2 Aberta Fase 4')
+    expect(heading[1]).toBe(`${comparisonHeading(1, 2)} ${COMPARISON_SIDES}`)
+    expect(markupTextOf(comparisonElementOf(tree))).not.toContain('Aberta')
   })
 
-  it('os dois lados trazem o ICR e a Qualidade de cada rodada', async () => {
+  it('cada linha leva o valor da referência e o da rodada, em dois grupos, sem linha de outlier', async () => {
     const admin = await newUser('Admin')
     const scene = await basicScene(admin)
 
     auth.userId = admin
     const tree = await render(scene.project)
-    const { comparison } = comparisonOf(tree)
-    expect(comparison.kind).toBe('compared')
-    if (comparison.kind !== 'compared') return
+    const { reference, round } = expectSides(tree, 'all')
 
-    const reference = comparison.reference
-    const round = comparison.round
-    expect(reference.roundNumber).toBe(1)
-    expect(round.roundNumber).toBe(2)
-    const alphaOf = (side: typeof reference, name: string) => {
-      const row = side.agreement.find(({ column }) => column.name === name)
-      const cell = row?.cell
-      return cell?.state === 'calculated' && cell.agreement.calculable
-        ? formatAlpha(cell.agreement.alpha)
-        : null
+    for (const side of [reference, round]) {
+      expect(side.alphas.every((alpha) => alpha !== null)).toBe(true)
+      expect(side.levels).toHaveLength(3)
     }
-    for (const name of ['Clareza', 'Profundidade']) {
-      expect(alphaOf(reference, name)).not.toBeNull()
-      expect(alphaOf(round, name)).not.toBeNull()
-      expect(rowOf(tree, comparisonAgreementRow(name))).toEqual([
-        comparisonAgreementRow(name),
-        alphaOf(reference, name),
-        alphaOf(round, name),
-      ])
-    }
-    expect(rowOf(tree, COMPARISON_AGREEMENT_ROW)).toBeUndefined()
-
-    const referenceLevels = levelCells(reference.quality?.all)
-    const roundLevels = levelCells(round.quality?.all)
-    expect(referenceLevels).toHaveLength(3)
-    expect(roundLevels).toHaveLength(3)
-    for (const [index, value] of (['high', 'medium', 'low'] as const).entries()) {
-      expect(rowOf(tree, scaleLabel(value))).toEqual([
-        scaleLabel(value),
-        referenceLevels[index],
-        roundLevels[index],
-      ])
-    }
+    expect(withoutOutliersRows(tree)).toEqual([])
   })
 
-  it('com outlier só na referência, só o lado dela traz os dois valores', async () => {
+  it('com outlier só na referência, o seletor troca os números e a rodada sem outlier repete os seus', async () => {
     const admin = await newUser('Admin')
     const scene = await basicScene(admin)
     await addOutlier(ownerDb, scene.rounds.get(1)!, scene.carla, admin)
 
     auth.userId = admin
-    const rows = withoutOutliersRows(await render(scene.project))
+    const tree = await render(scene.project)
+    const text = markupTextOf(comparisonElementOf(tree))
+    expect(text).toContain(COMPARISON_VIEW_ALL)
+    expect(text).toContain(COMPARISON_VIEW_WITHOUT_OUTLIERS)
+    expect(renderToStaticMarkup(comparisonElementOf(tree))).toContain(
+      `${COMPARISON_VIEW_PARAM}=${COMPARISON_VIEW_WITHOUT_OUTLIERS_VALUE}`,
+    )
+    const all = expectSides(tree, 'all')
+    expect(withoutOutliersRows(tree)).toEqual([])
 
-    expect(rows.map((row) => row[0])).toEqual([
-      `${comparisonAgreementRow('Clareza')} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`,
-      `${comparisonAgreementRow('Profundidade')} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`,
-      `${scaleLabel('high')} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`,
-      `${scaleLabel('medium')} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`,
-      `${scaleLabel('low')} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`,
-      `${COMPARISON_TOTAL_ROW} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`,
-    ])
-    for (const row of rows) {
-      expect(row[1]).not.toBe(COMPARISON_EMPTY)
-      expect(row[2]).toBe(COMPARISON_EMPTY)
-    }
+    const without = expectSides(await renderWithoutOutliers(scene.project), 'without-outliers')
+    expect(without.reference).not.toEqual(all.reference)
+    expect(without.round).toEqual(all.round)
   })
 
-  it('com outlier só na rodada da Fase 4, só o lado dela traz os dois valores', async () => {
+  it('com outlier só na rodada da Fase 4, só o lado dela muda sem outliers', async () => {
     const admin = await newUser('Admin')
     const scene = await basicScene(admin)
     await addOutlier(ownerDb, scene.rounds.get(2)!, scene.carla, admin)
 
     auth.userId = admin
-    const rows = withoutOutliersRows(await render(scene.project))
-
-    expect(rows).toHaveLength(6)
-    for (const row of rows) {
-      expect(row[1]).toBe(COMPARISON_EMPTY)
-      expect(row[2]).not.toBe(COMPARISON_EMPTY)
-    }
+    const all = expectSides(await render(scene.project), 'all')
+    const without = expectSides(await renderWithoutOutliers(scene.project), 'without-outliers')
+    expect(without.reference).toEqual(all.reference)
+    expect(without.round).not.toEqual(all.round)
   })
 
-  it('com outlier nas duas rodadas, os dois lados trazem os dois valores', async () => {
+  it('com outlier nas duas rodadas, os dois lados mudam sem outliers', async () => {
     const admin = await newUser('Admin')
     const scene = await basicScene(admin)
     await addOutlier(ownerDb, scene.rounds.get(1)!, scene.carla, admin)
     await addOutlier(ownerDb, scene.rounds.get(2)!, scene.bruno, admin)
 
     auth.userId = admin
-    const rows = withoutOutliersRows(await render(scene.project))
+    const all = expectSides(await render(scene.project), 'all')
+    const without = expectSides(await renderWithoutOutliers(scene.project), 'without-outliers')
+    expect(without.reference).not.toEqual(all.reference)
+    expect(without.round).not.toEqual(all.round)
+  })
 
-    expect(rows).toHaveLength(6)
-    for (const row of rows) {
-      expect(row[1]).not.toBe(COMPARISON_EMPTY)
-      expect(row[2]).not.toBe(COMPARISON_EMPTY)
-    }
+  it('sem outlier em nenhuma das rodadas, o pedido de sem outliers mostra todas as notas', async () => {
+    const admin = await newUser('Admin')
+    const scene = await basicScene(admin)
+
+    auth.userId = admin
+    const tree = await renderWithoutOutliers(scene.project)
+    expect(markupTextOf(comparisonElementOf(tree))).not.toContain(COMPARISON_VIEW_WITHOUT_OUTLIERS)
+    expectSides(tree, 'all')
   })
 
   it('depois de um retorno e de um novo avanço, o bloco nomeia a referência da passagem, e a lista não traz referência', async () => {
@@ -658,7 +687,7 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     expect(listTextOf(tree)).not.toContain('Referência')
   })
 
-  it('o bloco da referência não usa palavra, seta, diferença nem cor de juízo', async () => {
+  it('o bloco da referência não usa palavra, seta de subida ou descida, diferença nem cor de selo na tabela', async () => {
     const admin = await newUser('Admin')
     const scene = await basicScene(admin)
     await addOutlier(ownerDb, scene.rounds.get(1)!, scene.carla, admin)
@@ -667,7 +696,7 @@ describe('app/projects/[id]/rounds — a rodada da Fase 4 ao lado da rodada de r
     auth.userId = admin
     const tree = await render(scene.project)
 
-    expectNoJudgment(comparisonElementOf(tree))
+    expectNoJudgment(comparisonElementOf(tree), /<table[\s\S]*<\/table>/)
   })
 
   it('numa rodada da Fase 4 abaixo da faixa, a orientação é a da Fase 4', async () => {

@@ -1,20 +1,11 @@
-import { formatDate } from '@/app/notifications/labels'
 import { SCALE, scaleLabel, type ScaleValue } from '../evaluate/scale'
 import { PHASE_3 } from '../../pipeline/preconditions'
-import {
-  AGREEMENT_WITHOUT_OUTLIERS_LABEL,
-  CELL_UNRATED_LABEL,
-  NOT_CALCULABLE_LABEL,
-  formatAlpha,
-} from './agreement-labels'
+import { formatAlpha } from './agreement-labels'
 import { columnIdentity, type MatrixCell } from './agreement-matrix'
 import type { Quality } from './quality'
-import {
-  QUALITY_UNRATED,
-  QUALITY_UNRATED_WITHOUT_OUTLIERS,
-  formatShare,
-} from './quality-labels'
+import { QUALITY_LABEL, QUALITY_VIEW_ALL, formatWholeShare } from './quality-labels'
 import type { ComparedRound } from './reference-comparison'
+import type { ComparisonView } from './comparison-view'
 
 export const REFERENCE_COMPARISON_TITLE = 'Comparação com a rodada de referência'
 
@@ -22,32 +13,47 @@ export const REFERENCE_COMPARISON_HELP =
   'A rodada de referência é a que validou as versões de codebook e de prompt que a Fase 4 ' +
   'testa.'
 
-export function referenceComparisonHint(roundNumber: number, referenceNumber: number): string {
-  return (
-    `A rodada ${roundNumber} ao lado da rodada ${referenceNumber}, a última fechada da ` +
-    `Fase ${PHASE_3} antes dela.`
-  )
-}
+export const COMPARISON_AGREEMENT_GROUP = 'ICR'
 
-export const COMPARISON_AGREEMENT_ROW = 'ICR'
-
-export function comparisonAgreementRow(criterion: string): string {
-  return `${COMPARISON_AGREEMENT_ROW} · ${criterion}`
-}
+export const COMPARISON_QUALITY_GROUP = QUALITY_LABEL
 
 export const COMPARISON_TOTAL_ROW = 'Notas'
 
 export const COMPARISON_EMPTY = '—'
 
-export type ComparisonCell = { text: string; count?: number; muted?: boolean } | null
+export const COMPARISON_EMPTY_LEGEND = `${COMPARISON_EMPTY} poucas notas para calcular o ICR.`
+
+export const COMPARISON_ARROW = '→'
+
+export const COMPARISON_SIDES = `referência ${COMPARISON_ARROW} esta`
+
+export const COMPARISON_VIEW_LABEL = 'Notas usadas na comparação'
+
+export const COMPARISON_VIEW_ALL = QUALITY_VIEW_ALL
+
+export const COMPARISON_VIEW_WITHOUT_OUTLIERS = 'Sem outliers'
+
+export const ALPHA_WORSE_DROP = 0.05
+
+export const SHARE_WORSE_POINTS = 10
+
+export function comparisonHeading(referenceNumber: number, roundNumber: number): string {
+  return `Rodada ${referenceNumber} ${COMPARISON_ARROW} Rodada ${roundNumber}`
+}
 
 export type ComparisonRow = {
   key: string
   label: string
   level?: ScaleValue
   secondary: boolean
-  cells: ComparisonCell[]
+  reference: string | null
+  round: string | null
+  worse: boolean
 }
+
+export type ComparisonGroup = { key: string; label: string; rows: ComparisonRow[] }
+
+export type ComparisonTable = { groups: ComparisonGroup[]; fewNotes: boolean }
 
 type Versions = { codebookVersionNumber: number; promptVersionNumber: number }
 
@@ -58,51 +64,38 @@ function versionsText(round: Versions): string {
 export function comparedVersions(
   reference: Versions & { roundNumber: number },
   round: Versions & { roundNumber: number },
-): string {
-  if (versionsText(reference) === versionsText(round)) return `${versionsText(round)} nas duas`
+): string | null {
+  if (versionsText(reference) === versionsText(round)) return null
   return [reference, round]
     .map((side) => `Rodada ${side.roundNumber}: ${versionsText(side)}`)
     .join(' · ')
 }
 
-export function comparedPhase(round: { phase: number }, isReference: boolean): string {
-  return isReference ? `Fase ${round.phase} · referência` : `Fase ${round.phase}`
-}
-
-export function closedOn(closedAt: string): string {
-  return `fechada em ${formatDate(closedAt)}`
-}
-
-function agreementValue(cell: MatrixCell): NonNullable<ComparisonCell> {
-  if (cell.state !== 'calculated') return { text: CELL_UNRATED_LABEL, muted: true }
-  return cell.agreement.calculable
-    ? { text: formatAlpha(cell.agreement.alpha) }
-    : { text: NOT_CALCULABLE_LABEL, muted: true }
-}
-
-function agreementCell(cell: MatrixCell | null): ComparisonCell {
-  return cell ? agreementValue(cell) : null
-}
-
-function levelCell(quality: Quality | null | undefined, value: ScaleValue): ComparisonCell {
-  if (!quality?.rated) return null
-  const level = quality.levels.find((candidate) => candidate.value === value)
-  return level ? { text: formatShare(level.share), count: level.count } : null
-}
-
-function totalCell(quality: Quality | null | undefined, unrated: string): ComparisonCell {
-  if (!quality) return null
-  return quality.rated ? { text: String(quality.total) } : { text: unrated, muted: true }
-}
-
-function withoutOutliers(label: string): string {
-  return `${label} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`
-}
-
-function agreementRows(sides: readonly ComparedRound[]): ComparisonRow[] {
-  const outliers = sides.some((side) =>
-    side.agreement.some((row) => row.withoutOutliers !== null),
+export function hasComparisonOutliers(sides: readonly ComparedRound[]): boolean {
+  return sides.some(
+    (side) =>
+      (side.quality?.withoutOutliers ?? null) !== null ||
+      side.agreement.some((row) => row.withoutOutliers !== null),
   )
+}
+
+type Alpha = { text: string | null; value: number | null; few: boolean }
+
+function alphaOf(cell: MatrixCell | null): Alpha {
+  if (cell === null) return { text: null, value: null, few: false }
+  if (cell.state !== 'calculated' || !cell.agreement.calculable) {
+    return { text: null, value: null, few: true }
+  }
+  const text = formatAlpha(cell.agreement.alpha)
+  return { text, value: Number(text.replace(',', '.')), few: false }
+}
+
+function alphaWorse(reference: number | null, round: number | null): boolean {
+  if (reference === null || round === null) return false
+  return Math.round((reference - round) * 1000) >= Math.round(ALPHA_WORSE_DROP * 1000)
+}
+
+function agreementGroup(sides: readonly ComparedRound[], view: ComparisonView) {
   const criteria = new Map<string, string>()
   for (const side of sides) {
     for (const { column } of side.agreement) {
@@ -111,78 +104,103 @@ function agreementRows(sides: readonly ComparedRound[]): ComparisonRow[] {
     }
   }
 
-  return [...criteria].flatMap(([identity, name]) => {
-    const matches = sides.map(
-      (side) => side.agreement.find((row) => columnIdentity(row.column) === identity) ?? null,
-    )
-    const label = comparisonAgreementRow(name)
-    const rows: ComparisonRow[] = [
-      {
-        key: `agreement-${identity}`,
-        label,
-        secondary: false,
-        cells: matches.map((match) => agreementCell(match?.cell ?? null)),
-      },
-    ]
-    if (outliers) {
-      rows.push({
-        key: `agreement-${identity}-without`,
-        label: withoutOutliers(label),
-        secondary: true,
-        cells: matches.map((match) => agreementCell(match?.withoutOutliers ?? null)),
-      })
+  let fewNotes = false
+  const rows = [...criteria].map(([identity, name]): ComparisonRow => {
+    const [reference, round] = sides.map((side) => {
+      const match = side.agreement.find((row) => columnIdentity(row.column) === identity)
+      if (!match) return alphaOf(null)
+      return alphaOf(view === 'without-outliers' ? (match.withoutOutliers ?? match.cell) : match.cell)
+    })
+    fewNotes ||= reference.few || round.few
+    return {
+      key: `agreement-${identity}`,
+      label: name,
+      secondary: false,
+      reference: reference.text,
+      round: round.text,
+      worse: alphaWorse(reference.value, round.value),
     }
-    return rows
   })
+
+  return { rows, fewNotes }
 }
 
-export function comparisonRows(
-  reference: ComparedRound,
-  round: ComparedRound,
-): ComparisonRow[] {
-  const sides = [reference, round]
-  const qualityOutliers = sides.some((side) => (side.quality?.withoutOutliers ?? null) !== null)
+function qualityOf(side: ComparedRound, view: ComparisonView): Quality | null {
+  if (!side.quality) return null
+  return view === 'without-outliers'
+    ? (side.quality.withoutOutliers ?? side.quality.all)
+    : side.quality.all
+}
 
-  const rows: ComparisonRow[] = agreementRows(sides)
+function shareOf(quality: Quality | null, value: ScaleValue): number | null {
+  if (!quality?.rated) return null
+  const level = quality.levels.find((candidate) => candidate.value === value)
+  return level ? level.share : null
+}
 
-  for (const value of SCALE) {
-    rows.push({
+function wholePoints(share: number): number {
+  return Number(formatWholeShare(share).replace('%', ''))
+}
+
+function levelWorse(value: ScaleValue, reference: number | null, round: number | null): boolean {
+  if (reference === null || round === null) return false
+  const drop = wholePoints(reference) - wholePoints(round)
+  if (value === 'high') return drop >= SHARE_WORSE_POINTS
+  if (value === 'low') return -drop >= SHARE_WORSE_POINTS
+  return false
+}
+
+function totalOf(quality: Quality | null): string | null {
+  return quality?.rated ? String(quality.total) : null
+}
+
+function qualityGroup(sides: readonly ComparedRound[], view: ComparisonView): ComparisonRow[] {
+  const [reference, round] = sides.map((side) => qualityOf(side, view))
+
+  const levels = SCALE.map((value): ComparisonRow => {
+    const before = shareOf(reference, value)
+    const after = shareOf(round, value)
+    return {
       key: value,
       label: scaleLabel(value),
       level: value,
       secondary: false,
-      cells: sides.map((side) => levelCell(side.quality?.all, value)),
-    })
-    if (qualityOutliers) {
-      rows.push({
-        key: `${value}-without`,
-        label: withoutOutliers(scaleLabel(value)),
-        secondary: true,
-        cells: sides.map((side) => levelCell(side.quality?.withoutOutliers, value)),
-      })
+      reference: before === null ? null : formatWholeShare(before),
+      round: after === null ? null : formatWholeShare(after),
+      worse: levelWorse(value, before, after),
     }
-  }
-
-  rows.push({
-    key: 'total',
-    label: COMPARISON_TOTAL_ROW,
-    secondary: true,
-    cells: sides.map((side) => totalCell(side.quality?.all, QUALITY_UNRATED)),
   })
-  if (qualityOutliers) {
-    rows.push({
-      key: 'total-without',
-      label: withoutOutliers(COMPARISON_TOTAL_ROW),
-      secondary: true,
-      cells: sides.map((side) =>
-        side.quality?.withoutOutliers
-          ? totalCell(side.quality.withoutOutliers, QUALITY_UNRATED_WITHOUT_OUTLIERS)
-          : null,
-      ),
-    })
-  }
 
-  return rows
+  return [
+    ...levels,
+    {
+      key: 'total',
+      label: COMPARISON_TOTAL_ROW,
+      secondary: true,
+      reference: totalOf(reference),
+      round: totalOf(round),
+      worse: false,
+    },
+  ]
+}
+
+export function comparisonTable(
+  reference: ComparedRound,
+  round: ComparedRound,
+  view: ComparisonView = 'all',
+): ComparisonTable {
+  const sides = [reference, round]
+  const agreement = agreementGroup(sides, view)
+
+  return {
+    groups: [
+      ...(agreement.rows.length > 0
+        ? [{ key: 'agreement', label: COMPARISON_AGREEMENT_GROUP, rows: agreement.rows }]
+        : []),
+      { key: 'quality', label: COMPARISON_QUALITY_GROUP, rows: qualityGroup(sides, view) },
+    ],
+    fewNotes: agreement.fewNotes,
+  }
 }
 
 export function noReferenceMessage(roundNumber: number): string {

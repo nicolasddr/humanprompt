@@ -8,9 +8,12 @@ import {
 } from './quality-labels'
 import { qualityViewHref, type QualityView } from './quality-view'
 
+export const VIEW_GROUP_CLASS =
+  'inline-flex w-fit max-w-full divide-x divide-line-strong overflow-x-auto rounded-control border border-line-strong bg-surface'
+
 const option = 'px-3 py-1.5 text-[12.5px] font-semibold whitespace-nowrap transition-colors'
 
-function Option({
+export function ViewOption({
   href,
   active,
   children,
@@ -47,17 +50,17 @@ export function QualityViewSelector({
       <div
         role="group"
         aria-label={QUALITY_VIEW_LABEL}
-        className="inline-flex w-fit max-w-full divide-x divide-line-strong overflow-x-auto rounded-control border border-line-strong bg-surface"
+        className={VIEW_GROUP_CLASS}
       >
-        <Option href={qualityViewHref(href, 'all')} active={view === 'all'}>
+        <ViewOption href={qualityViewHref(href, 'all')} active={view === 'all'}>
           {QUALITY_VIEW_ALL}
-        </Option>
-        <Option
+        </ViewOption>
+        <ViewOption
           href={qualityViewHref(href, 'without-outliers')}
           active={view === 'without-outliers'}
         >
           {qualityViewWithoutOutliers(excluded)}
-        </Option>
+        </ViewOption>
       </div>
       <p className="m-0 text-xs text-muted">{QUALITY_VIEW_RESULT}</p>
     </div>

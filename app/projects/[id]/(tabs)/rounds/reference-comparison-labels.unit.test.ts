@@ -1,29 +1,21 @@
 import { describe, it, expect } from 'vitest'
 import {
+  COMPARISON_AGREEMENT_GROUP,
   COMPARISON_EMPTY,
+  COMPARISON_QUALITY_GROUP,
   COMPARISON_TOTAL_ROW,
   REFERENCE_COMPARISON_HELP,
-  closedOn,
-  comparedPhase,
   comparedVersions,
-  comparisonAgreementRow,
-  comparisonRows,
-  type ComparisonRow,
+  comparisonHeading,
+  comparisonTable,
+  hasComparisonOutliers,
+  type ComparisonTable,
 } from '@/app/projects/[id]/(tabs)/rounds/reference-comparison-labels'
 import type { ComparedRound } from '@/app/projects/[id]/(tabs)/rounds/reference-comparison'
 import type { RoundAgreements } from '@/app/projects/[id]/(tabs)/rounds/agreement-matrix'
 import type { Quality, QualityPair } from '@/app/projects/[id]/(tabs)/rounds/quality'
-import {
-  AGREEMENT_WITHOUT_OUTLIERS_LABEL,
-  CELL_UNRATED_LABEL,
-  NOT_CALCULABLE_LABEL,
-} from '@/app/projects/[id]/(tabs)/rounds/agreement-labels'
-import {
-  QUALITY_UNRATED,
-  QUALITY_UNRATED_WITHOUT_OUTLIERS,
-} from '@/app/projects/[id]/(tabs)/rounds/quality-labels'
 import { scaleLabel } from '@/app/projects/[id]/(tabs)/evaluate/scale'
-import { ROUND_CLOSED, ROUND_OPEN } from '@/app/projects/[id]/(tabs)/rounds/round-status'
+import { ROUND_CLOSED } from '@/app/projects/[id]/(tabs)/rounds/round-status'
 import { PHASE_3, PHASE_4 } from '@/app/projects/[id]/pipeline/preconditions'
 import type { Agreement } from '@/lib/agreement'
 
@@ -62,8 +54,6 @@ function criterion(
     withoutOutliers: withoutOutliers ? cell(withoutOutliers) : null,
   }
 }
-
-const ICR = comparisonAgreementRow('Clareza')
 
 function rated(high: number, medium: number, low: number): Quality {
   const total = high + medium + low
@@ -108,96 +98,109 @@ function side(
   }
 }
 
-function table(rows: ComparisonRow[]): [string, string, string][] {
-  return rows.map((row) => [
-    row.label,
-    ...(row.cells.map((cell) =>
-      cell === null ? COMPARISON_EMPTY : cell.count === undefined ? cell.text : `${cell.text} (${cell.count})`,
-    ) as [string, string]),
-  ])
+function rows(table: ComparisonTable): [string, string, string][] {
+  return table.groups.flatMap((group) =>
+    group.rows.map(
+      (row): [string, string, string] => [
+        row.label,
+        row.reference ?? COMPARISON_EMPTY,
+        row.round ?? COMPARISON_EMPTY,
+      ],
+    ),
+  )
 }
 
-describe('app/projects/[id]/rounds/reference-comparison-labels — comparisonRows', () => {
-  it('uma linha por medida, a referência primeiro, sem linha de outlier quando ninguém tem', () => {
+function worse(table: ComparisonTable): string[] {
+  return table.groups.flatMap((group) =>
+    group.rows.filter((row) => row.worse).map((row) => row.label),
+  )
+}
+
+describe('app/projects/[id]/rounds/reference-comparison-labels — comparisonTable', () => {
+  it('dois grupos, ICR com o nome do critério e Qualidade com % inteira, sem contagem', () => {
     const reference = side(4, PHASE_3)
     const round = side(6, PHASE_4, {
       all: calculable(0.688),
       quality: { all: rated(16, 11, 5), withoutOutliers: null, excluded: 0 },
     })
 
-    expect(table(comparisonRows(reference, round))).toEqual([
-      [ICR, '0,741', '0,688'],
-      [scaleLabel('high'), '62,5% (25)', '50% (16)'],
-      [scaleLabel('medium'), '25% (10)', '34,4% (11)'],
-      [scaleLabel('low'), '12,5% (5)', '15,6% (5)'],
+    const table = comparisonTable(reference, round)
+    expect(table.groups.map((group) => group.label)).toEqual([
+      COMPARISON_AGREEMENT_GROUP,
+      COMPARISON_QUALITY_GROUP,
+    ])
+    expect(rows(table)).toEqual([
+      ['Clareza', '0,741', '0,688'],
+      [scaleLabel('high'), '63%', '50%'],
+      [scaleLabel('medium'), '25%', '34%'],
+      [scaleLabel('low'), '13%', '16%'],
       [COMPARISON_TOTAL_ROW, '40', '32'],
     ])
+    expect(table.fewNotes).toBe(false)
   })
 
-  it('as linhas de Alto, Médio e Baixo levam o nível, e só as de medida principal são destacadas', () => {
-    const rows = comparisonRows(side(4, PHASE_3), side(6, PHASE_4))
+  it('as linhas de Alto, Médio e Baixo levam o nível, e só Notas fica em segundo plano', () => {
+    const table = comparisonTable(side(4, PHASE_3), side(6, PHASE_4))
+    const all = table.groups.flatMap((group) => group.rows)
 
-    expect(rows.map((row) => row.level ?? null)).toEqual([null, 'high', 'medium', 'low', null])
-    expect(rows.map((row) => row.secondary)).toEqual([false, false, false, false, true])
+    expect(all.map((row) => row.level ?? null)).toEqual([null, 'high', 'medium', 'low', null])
+    expect(all.map((row) => row.secondary)).toEqual([false, false, false, false, true])
   })
 
-  it('com outlier só num lado, cada medida ganha a linha sem outlier e o outro lado mostra o traço', () => {
+  it('sem outliers troca todos os números, e o lado sem outlier repete os de todas as notas', () => {
     const reference = side(4, PHASE_3, {
       withoutOutliers: calculable(0.802),
-      quality: { all: rated(25, 10, 5), withoutOutliers: rated(20, 8, 4), excluded: 1 },
+      quality: { all: rated(25, 10, 5), withoutOutliers: rated(20, 8, 2), excluded: 1 },
     })
     const round = side(6, PHASE_4, { all: calculable(0.688) })
 
-    const without = (label: string) => `${label} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`
-    expect(table(comparisonRows(reference, round))).toEqual([
-      [ICR, '0,741', '0,688'],
-      [without(ICR), '0,802', COMPARISON_EMPTY],
-      [scaleLabel('high'), '62,5% (25)', '62,5% (25)'],
-      [without(scaleLabel('high')), '62,5% (20)', COMPARISON_EMPTY],
-      [scaleLabel('medium'), '25% (10)', '25% (10)'],
-      [without(scaleLabel('medium')), '25% (8)', COMPARISON_EMPTY],
-      [scaleLabel('low'), '12,5% (5)', '12,5% (5)'],
-      [without(scaleLabel('low')), '12,5% (4)', COMPARISON_EMPTY],
-      [COMPARISON_TOTAL_ROW, '40', '40'],
-      [without(COMPARISON_TOTAL_ROW), '32', COMPARISON_EMPTY],
+    expect(hasComparisonOutliers([reference, round])).toBe(true)
+    expect(rows(comparisonTable(reference, round, 'without-outliers'))).toEqual([
+      ['Clareza', '0,802', '0,688'],
+      [scaleLabel('high'), '67%', '63%'],
+      [scaleLabel('medium'), '27%', '25%'],
+      [scaleLabel('low'), '7%', '13%'],
+      [COMPARISON_TOTAL_ROW, '30', '40'],
     ])
-
-    const rows = comparisonRows(reference, round)
-    expect(rows.filter((row) => row.label.endsWith(AGREEMENT_WITHOUT_OUTLIERS_LABEL)).every((row) => row.secondary)).toBe(true)
+    expect(rows(comparisonTable(reference, round, 'all'))[0]).toEqual(['Clareza', '0,741', '0,688'])
   })
 
-  it('ICR não calculável e Qualidade sem nota aparecem por extenso, sem número', () => {
+  it('sem outlier em nenhuma das rodadas, não há o que alternar', () => {
+    expect(hasComparisonOutliers([side(4, PHASE_3), side(6, PHASE_4)])).toBe(false)
+  })
+
+  it('ICR não calculável ou sem nota vira traço e liga a legenda; Qualidade sem nota vira traço', () => {
     const reference = side(4, PHASE_3, {
       all: NOT_CALCULABLE,
-      withoutOutliers: NOT_CALCULABLE,
-      quality: { all: { rated: false, total: 0 }, withoutOutliers: { rated: false, total: 0 }, excluded: 1 },
+      quality: { all: { rated: false, total: 0 }, withoutOutliers: null, excluded: 0 },
     })
     const round = side(6, PHASE_4)
 
-    const rows = table(comparisonRows(reference, round))
-    expect(rows[0]).toEqual([ICR, NOT_CALCULABLE_LABEL, '0,741'])
-    expect(rows[1][1]).toBe(NOT_CALCULABLE_LABEL)
-    expect(rows[2][1]).toBe(COMPARISON_EMPTY)
-    expect(rows.at(-2)![1]).toBe(QUALITY_UNRATED)
-    expect(rows.at(-1)![1]).toBe(QUALITY_UNRATED_WITHOUT_OUTLIERS)
-
-    const cell = comparisonRows(reference, round)[0].cells[0]
-    expect(cell?.muted).toBe(true)
+    const table = comparisonTable(reference, round)
+    expect(rows(table)).toEqual([
+      ['Clareza', COMPARISON_EMPTY, '0,741'],
+      [scaleLabel('high'), COMPARISON_EMPTY, '63%'],
+      [scaleLabel('medium'), COMPARISON_EMPTY, '25%'],
+      [scaleLabel('low'), COMPARISON_EMPTY, '13%'],
+      [COMPARISON_TOTAL_ROW, COMPARISON_EMPTY, '40'],
+    ])
+    expect(table.fewNotes).toBe(true)
   })
 
   it('um lado sem Qualidade mostra o traço nas linhas de Qualidade', () => {
-    const rows = table(comparisonRows(side(4, PHASE_3, { quality: null }), side(6, PHASE_4)))
-    expect(rows.slice(1).map((row) => row[1])).toEqual([
+    const table = comparisonTable(side(4, PHASE_3, { quality: null }), side(6, PHASE_4))
+    expect(rows(table).slice(1).map((row) => row[1])).toEqual([
       COMPARISON_EMPTY,
       COMPARISON_EMPTY,
       COMPARISON_EMPTY,
       COMPARISON_EMPTY,
     ])
+    expect(table.fewNotes).toBe(false)
   })
 })
 
 describe('app/projects/[id]/rounds/reference-comparison-labels — ICR por critério', () => {
-  it('uma linha de ICR por critério, ligada por nome e tipo, com o traço do lado que não tem o critério', () => {
+  it('uma linha por critério, ligada por nome e tipo, com o traço do lado que não tem o critério', () => {
     const reference = side(4, PHASE_3, {
       agreement: [
         criterion('Relevance', calculable(-0.031)),
@@ -212,47 +215,88 @@ describe('app/projects/[id]/rounds/reference-comparison-labels — ICR por crit�
       ],
     })
 
-    expect(table(comparisonRows(reference, round)).slice(0, 4)).toEqual([
-      [comparisonAgreementRow('Relevance'), '-0,031', '0,702'],
-      [comparisonAgreementRow('Diversity'), '0,548', COMPARISON_EMPTY],
-      [comparisonAgreementRow('Diversity'), COMPARISON_EMPTY, '0,611'],
-      [comparisonAgreementRow('Fluência'), COMPARISON_EMPTY, CELL_UNRATED_LABEL],
+    const table = comparisonTable(reference, round)
+    expect(rows(table).slice(0, 4)).toEqual([
+      ['Relevance', '-0,031', '0,702'],
+      ['Diversity', '0,548', COMPARISON_EMPTY],
+      ['Diversity', COMPARISON_EMPTY, '0,611'],
+      ['Fluência', COMPARISON_EMPTY, COMPARISON_EMPTY],
     ])
-    expect(comparisonRows(reference, round).slice(0, 4).map((row) => row.secondary)).toEqual([
-      false,
-      false,
-      false,
-      false,
-    ])
+    expect(table.fewNotes).toBe(true)
   })
 
-  it('com outlier num lado, cada critério ganha a sua linha sem os marcados', () => {
-    const reference = side(4, PHASE_3, {
-      agreement: [
-        criterion('Relevance', calculable(-0.031), calculable(0.2)),
-        criterion('Diversity', calculable(0.548), calculable(0.6)),
-      ],
-    })
+  it('critério ausente num dos lados não liga a legenda de poucas notas', () => {
+    const reference = side(4, PHASE_3, { agreement: [criterion('Relevance', calculable(0.5))] })
     const round = side(6, PHASE_4, {
-      agreement: [criterion('Relevance', calculable(0.702)), criterion('Diversity', calculable(0.611))],
+      agreement: [criterion('Relevance', calculable(0.5)), criterion('Tone', calculable(0.7))],
     })
-
-    const without = (label: string) => `${label} ${AGREEMENT_WITHOUT_OUTLIERS_LABEL}`
-    expect(table(comparisonRows(reference, round)).slice(0, 4)).toEqual([
-      [comparisonAgreementRow('Relevance'), '-0,031', '0,702'],
-      [without(comparisonAgreementRow('Relevance')), '0,200', COMPARISON_EMPTY],
-      [comparisonAgreementRow('Diversity'), '0,548', '0,611'],
-      [without(comparisonAgreementRow('Diversity')), '0,600', COMPARISON_EMPTY],
-    ])
+    expect(comparisonTable(reference, round).fewNotes).toBe(false)
   })
 
+  it('sem critério em nenhum lado, o grupo do ICR some', () => {
+    const table = comparisonTable(
+      side(4, PHASE_3, { agreement: [] }),
+      side(6, PHASE_4, { agreement: [] }),
+    )
+    expect(table.groups.map((group) => group.label)).toEqual([COMPARISON_QUALITY_GROUP])
+  })
+})
+
+describe('app/projects/[id]/rounds/reference-comparison-labels — piora', () => {
+  function pair(reference: number, round: number) {
+    return comparisonTable(
+      side(4, PHASE_3, { agreement: [criterion('Clareza', calculable(reference))] }),
+      side(6, PHASE_4, { agreement: [criterion('Clareza', calculable(round))] }),
+    )
+  }
+
+  it('o α piora quando cai 0,05 ou mais, pelos números da tela', () => {
+    expect(worse(pair(0.584, 0.534))).toEqual(['Clareza'])
+    expect(worse(pair(0.584, 0.535))).toEqual([])
+    expect(worse(pair(0.5844, 0.5336))).toEqual(['Clareza'])
+    expect(worse(pair(0.584, 0.7))).toEqual([])
+  })
+
+  it('sem α de um dos lados, não há piora', () => {
+    const table = comparisonTable(
+      side(4, PHASE_3, { agreement: [criterion('Clareza', calculable(0.8))] }),
+      side(6, PHASE_4, { agreement: [criterion('Clareza', NOT_CALCULABLE)] }),
+    )
+    expect(worse(table)).toEqual([])
+  })
+
+  function quality(reference: Quality, round: Quality) {
+    return comparisonTable(
+      side(4, PHASE_3, { quality: { all: reference, withoutOutliers: null, excluded: 0 } }),
+      side(6, PHASE_4, { quality: { all: round, withoutOutliers: null, excluded: 0 } }),
+    )
+  }
+
+  it('Alto piora quando cai 10 pontos ou mais, e Baixo quando sobe 10 ou mais', () => {
+    expect(worse(quality(rated(74, 19, 7), rated(64, 19, 17)))).toEqual([
+      scaleLabel('high'),
+      scaleLabel('low'),
+    ])
+    expect(worse(quality(rated(74, 19, 7), rated(65, 19, 16)))).toEqual([])
+  })
+
+  it('Médio e Notas nunca pioram', () => {
+    expect(worse(quality(rated(20, 60, 20), rated(8, 4, 4)))).toEqual([])
+  })
+
+  it('a regra usa as % inteiras da tela', () => {
+    expect(worse(quality(rated(745, 255, 0), rated(645, 355, 0)))).toEqual([scaleLabel('high')])
+    expect(worse(quality(rated(744, 256, 0), rated(646, 354, 0)))).toEqual([])
+  })
 })
 
 describe('app/projects/[id]/rounds/reference-comparison-labels — cabeçalho', () => {
-  it('as versões aparecem uma vez quando as duas rodadas fixaram as mesmas', () => {
-    expect(comparedVersions(side(4, PHASE_3), side(6, PHASE_4))).toBe(
-      'Codebook v4 · Prompt v3 nas duas',
-    )
+  it('o cabeçalho vai da referência para a rodada atual', () => {
+    expect(comparisonHeading(4, 6)).toBe('Rodada 4 → Rodada 6')
+  })
+
+  it('com as mesmas versões nas duas rodadas, nada aparece', () => {
+    expect(comparedVersions(side(4, PHASE_3), side(6, PHASE_4))).toBeNull()
   })
 
   it('com versões diferentes, cada rodada aparece com as suas', () => {
@@ -260,15 +304,6 @@ describe('app/projects/[id]/rounds/reference-comparison-labels — cabeçalho', 
     expect(comparedVersions(side(4, PHASE_3), round)).toBe(
       'Rodada 4: Codebook v4 · Prompt v3 · Rodada 6: Codebook v5 · Prompt v3',
     )
-  })
-
-  it('a coluna da referência diz que é a referência, e a outra só a fase', () => {
-    expect(comparedPhase(side(4, PHASE_3), true)).toBe(`Fase ${PHASE_3} · referência`)
-    expect(comparedPhase(side(6, PHASE_4, { status: ROUND_OPEN }), false)).toBe(`Fase ${PHASE_4}`)
-  })
-
-  it('a data de fechamento vem por extenso', () => {
-    expect(closedOn('2026-09-28T12:00:00.000Z')).toBe('fechada em 28/09/2026')
   })
 })
 
