@@ -193,13 +193,9 @@ export default async function Dashboard({
       {hasProjects ? (
         <CollapsedProcessOverview />
       ) : (
-        <ProcessOverview
-          createAction={
-            <ButtonLink href="/projects/new" fullWidth>
-              + Novo projeto
-            </ButtonLink>
-          }
-        />
+        <div className="border-t border-line pt-10">
+          <ProcessOverview titleAs="h2" />
+        </div>
       )}
     </PageShell>
   )

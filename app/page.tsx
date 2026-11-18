@@ -1,43 +1,24 @@
 import Link from '@/app/components/app-link'
 import { redirect } from 'next/navigation'
 import { getClaims } from '@/lib/supabase/server'
-import { GoogleSignInButton, LoginButton } from './components/auth-buttons'
+import { GoogleSignInButton } from './components/auth-buttons'
 import { ProcessOverview } from './components/process-overview'
-import { ProcessPhasesFooter } from './components/process-phases-footer'
 
 export default async function Home() {
   const claims = await getClaims()
   if (claims) redirect('/dashboard')
 
   return (
-    <div className="flex-1 bg-surface text-sm leading-[1.6] text-ink">
-      <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-line bg-surface px-6 py-3">
-        <Link className="flex items-center gap-2 text-[15px] font-bold text-brand" href="/">
+    <div className="flex-1 bg-surface text-ink">
+      <header className="border-b border-line px-[18px] py-3 sm:px-7">
+        <Link className="text-[15px] font-bold text-brand" href="/">
           HumanPrompt
         </Link>
-        <GoogleSignInButton />
       </header>
 
-      <main className="mx-auto max-w-[960px] px-6 pb-20">
-        <div className="pt-14 pb-10 text-center">
-          <h1 className="mb-4 text-[34px] leading-[1.2] font-extrabold text-ink">
-            Crie e valide prompts de forma sistemática
-          </h1>
-          <p className="mx-auto mb-7 max-w-[520px] text-base leading-[1.6] text-muted">
-            Esta ferramenta implementa o processo proposto por Shah (2025) em{' '}
-            <em>From Prompt Engineering to Prompt Science</em>, que visa tornar a
-            engenharia de prompt mais verificável, replicável e livre de
-            subjetividade individual.
-          </p>
-          <GoogleSignInButton />
-        </div>
-
-        <ProcessOverview
-          createAction={<LoginButton fullWidth>+ Novo projeto</LoginButton>}
-        />
+      <main className="mx-auto max-w-[860px] px-[18px] pt-8 pb-12 sm:px-7 sm:pt-12 sm:pb-16">
+        <ProcessOverview action={<GoogleSignInButton />} />
       </main>
-
-      <ProcessPhasesFooter />
     </div>
   )
 }

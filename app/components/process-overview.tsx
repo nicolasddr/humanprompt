@@ -1,16 +1,62 @@
 import type { ReactNode } from 'react'
 import { PROJECT_PHASES } from '@/app/projects/[id]/phase-bar'
+import { cx } from './ui/cx'
 import { Disclosure } from './ui/disclosure'
-import './process-overview.css'
 
-export function ProcessOverview({ createAction }: { createAction: ReactNode }) {
+const PHASE_STEPS = [
+  {
+    text: 'Escreva o prompt, cadastre os itens de entrada e monte o codebook.',
+    repeat: null,
+  },
+  {
+    text: 'Os avaliadores aplicam o codebook às respostas. Se discordam, ajuste o codebook.',
+    repeat: 'Repete até concordarem',
+  },
+  {
+    text: 'O codebook entra no prompt. Se as respostas não estão boas, ajuste o prompt.',
+    repeat: 'Repete até ficarem boas',
+  },
+  {
+    text: 'Com codebook e prompt congelados, itens e avaliadores novos confirmam o resultado.',
+    repeat: null,
+  },
+]
+
+const SAMPLE_GRADES = [
+  { evaluator: 'Avaliador 1', level: 3, label: 'Alto' },
+  { evaluator: 'Avaliador 2', level: 3, label: 'Alto' },
+  { evaluator: 'Avaliador 3', level: 2, label: 'Médio' },
+]
+
+const CRITERION_LEVELS = [
+  { level: 3, label: 'Alto', text: 'Dá para entender sem ler o código' },
+  { level: 2, label: 'Médio', text: 'Entende com algum esforço' },
+  { level: 1, label: 'Baixo', text: 'Não dá para entender' },
+]
+
+export function ProcessOverview({
+  action,
+  titleAs: Title = 'h1',
+}: {
+  action?: ReactNode
+  titleAs?: 'h1' | 'h2'
+}) {
   return (
-    <div className="process-overview">
-      <RoleCards createAction={createAction} />
-      <section className="process-section">
-        <h2 className="section-heading">Como funciona o processo</h2>
-        <ProcessGuide />
-      </section>
+    <div className="@container text-sm leading-[1.55] text-ink">
+      <div className="grid items-center gap-7 @xl:grid-cols-[1.1fr_1fr] @xl:gap-10">
+        <div>
+          <Title className="m-0 mb-3 text-[26px] leading-[1.2] font-extrabold tracking-[-0.01em] text-ink @xl:text-[32px]">
+            Crie e valide prompts com avaliadores humanos
+          </Title>
+          <p className={cx('m-0 text-base text-label @xl:text-[17px]', action ? 'mb-[22px]' : null)}>
+            Esta ferramenta implementa o processo proposto por Shah (2025) em{' '}
+            <em>From Prompt Engineering to Prompt Science</em>.
+          </p>
+          {action ? <div>{action}</div> : null}
+        </div>
+        <SampleScreen />
+      </div>
+      <ProcessGuide />
     </div>
   )
 }
@@ -18,49 +64,88 @@ export function ProcessOverview({ createAction }: { createAction: ReactNode }) {
 export function CollapsedProcessOverview() {
   return (
     <Disclosure
-      className="process-overview border-t border-line pt-6"
+      className="border-t border-line pt-6"
       summary="Como funciona o processo"
       summaryClassName="text-sm font-semibold text-ink-soft"
     >
-      <div className="pt-6">
+      <div className="@container text-sm leading-[1.55] text-ink [&>h2:first-child]:mt-6">
         <ProcessGuide />
       </div>
     </Disclosure>
   )
 }
 
-function RoleCards({ createAction }: { createAction: ReactNode }) {
+function SectionHeading({ children }: { children: ReactNode }) {
   return (
-    <div className="role-cards">
-      <div className="role-card">
-        <div className="role-card-header">
-          <div className="role-icon">🛡</div>
-          <div>
-            <div className="role-title">Administrador</div>
-            <div className="role-subtitle">Criar e gerenciar projetos</div>
-          </div>
-        </div>
-        <ul className="role-features">
-          <li>Crie projetos e convide avaliadores por e-mail</li>
-          <li>Defina o codebook com definições e critérios</li>
-          <li>Acompanhe a concordância e a confiabilidade entre avaliadores</li>
-        </ul>
-        {createAction}
-      </div>
+    <h2 className="mt-10 mb-4 text-center text-[13px] font-semibold text-muted @xl:mt-[52px]">
+      {children}
+    </h2>
+  )
+}
 
-      <div className="role-card">
-        <div className="role-card-header">
-          <div className="role-icon">👥</div>
-          <div>
-            <div className="role-title">Avaliador</div>
-            <div className="role-subtitle">Participar de um projeto</div>
-          </div>
+function Levels({ filled }: { filled: number }) {
+  return (
+    <span className="flex gap-[3px]" aria-hidden="true">
+      {[1, 2, 3].map((n) => (
+        <span
+          key={n}
+          className={cx('h-2 w-[18px] rounded-[2px]', n <= filled ? 'bg-brand' : 'bg-line')}
+        />
+      ))}
+    </span>
+  )
+}
+
+function RepeatIcon() {
+  return (
+    <svg
+      className="h-[13px] w-[13px] shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+    </svg>
+  )
+}
+
+function SampleScreen() {
+  return (
+    <div
+      className="rounded-card border border-line bg-surface px-[18px] py-4 shadow-[0_8px_24px_rgba(17,24,39,0.08)]"
+      aria-hidden="true"
+    >
+      <div className="mb-2.5 flex justify-between text-xs text-muted">
+        <span>Resposta 3 de 10</span>
+        <span>Clareza</span>
+      </div>
+      <div className="mb-2.5 grid gap-1.5 border-b border-line pb-3.5">
+        {['w-[92%]', 'w-[78%]', 'w-[60%]'].map((width) => (
+          <span key={width} className={cx('block h-[7px] rounded bg-line', width)} />
+        ))}
+      </div>
+      {SAMPLE_GRADES.map((grade) => (
+        <div
+          key={grade.evaluator}
+          className="grid grid-cols-[1fr_auto_48px] items-center gap-2.5 py-1 text-[13px]"
+        >
+          <span>{grade.evaluator}</span>
+          <Levels filled={grade.level} />
+          <span className="text-right text-label">{grade.label}</span>
         </div>
-        <ul className="role-features">
-          <li>Você entra por convite. O convite aparece em Meus projetos, com Aceitar e Recusar.</li>
-          <li>Avalie respostas de forma independente</li>
-          <li>Contribua para a validação do prompt</li>
-        </ul>
+      ))}
+      <div className="mt-2.5 grid grid-cols-[auto_1fr_auto] items-center gap-2.5 border-t border-line pt-2.5 text-[13px]">
+        <span>Concordância na rodada</span>
+        <span className="h-1.5 overflow-hidden rounded-[3px] bg-line">
+          <span className="block h-full w-[82%] bg-brand" />
+        </span>
+        <b>82%</b>
       </div>
     </div>
   )
@@ -69,178 +154,87 @@ function RoleCards({ createAction }: { createAction: ReactNode }) {
 function ProcessGuide() {
   return (
     <>
-      <p className="section-subheading">Baseado em Shah (2025), leia antes de começar</p>
-
-      <div className="codebook-block">
-        <div className="codebook-block-title">📋 O Codebook</div>
-        <p className="codebook-intro">
-          O codebook é o documento central do processo. Ele tem duas partes com
-          funções distintas:
-        </p>
-        <div className="codebook-parts">
-          <div className="codebook-part">
-            <div className="codebook-part-num">Parte 1</div>
-            <div className="codebook-part-title">Definições</div>
-            <p className="codebook-part-desc">
-              Define os conceitos que estruturam a tarefa da LLM: as categorias,
-              dimensões ou partes do conteúdo gerado, com seus significados precisos. A
-              LLM usará essas definições para produzir sua resposta, e os
-              avaliadores as usarão como referência ao aplicar os critérios.
-            </p>
-            <div className="codebook-part-example">
-              Em tarefas de classificação, são as categorias possíveis (ex:
-              Informacional, Transacional). Em tarefas de avaliação de qualidade,
-              são as dimensões a avaliar (ex: Atomicidade, Clareza). Em tarefas de
-              geração, são as partes que a LLM deve gerar, cada uma avaliada
-              separadamente (ex: título e corpo de uma mensagem de commit).
-            </div>
+      <SectionHeading>O codebook</SectionHeading>
+      <p className="mx-auto mt-0 mb-[18px] max-w-[520px] text-center text-muted">
+        O documento que a LLM e os avaliadores seguem. Tem duas partes; no exemplo, para
+        gerar mensagens de commit:
+      </p>
+      <div className="grid gap-4 @xl:grid-cols-2">
+        <div className="rounded-card border border-line px-[18px] py-4">
+          <div className="mb-3">
+            <b className="block text-[15px]">Definições</b>
+            <span className="text-[13px] text-muted">O que a LLM deve produzir</span>
           </div>
-
-          <div className="codebook-part">
-            <div className="codebook-part-num">Parte 2</div>
-            <div className="codebook-part-title">Critérios</div>
-            <p className="codebook-part-desc">
-              Define como os avaliadores julgam a qualidade das respostas da LLM.
-              Cada critério tem níveis com definições precisas, não apenas rótulos.
-            </p>
-            <div className="codebook-part-example">
-              <strong>Ex (critério &quot;Corretude&quot;):</strong> Alto: identificou
-              corretamente o que está adequado e o que está problemático / Médio:
-              acertou em parte / Baixo: errou ou ignorou aspectos relevantes
+          {[
+            ['Título', 'Resume a mudança em uma linha'],
+            ['Corpo', 'Explica por que a mudança foi feita'],
+          ].map(([name, text]) => (
+            <div
+              key={name}
+              className="mt-1.5 grid grid-cols-[56px_1fr] gap-2.5 rounded-lg bg-canvas px-2.5 py-2 text-[13px]"
+            >
+              <b>{name}</b>
+              <span className="text-label">{text}</span>
             </div>
-          </div>
+          ))}
         </div>
-        <div className="codebook-note">
-          <strong>
-            <span data-tooltip="Concordância: o quanto dois ou mais avaliadores dão a mesma nota ao aplicar o mesmo codebook. A confiabilidade (ICR, Inter-Coder Reliability) é estimada a partir dela, descontado o acaso. As duas altas indicam que as definições e critérios estão claros o suficiente para serem usados de forma consistente.">
-              Concordância entre avaliadores
-            </span>{' '}
-            = clareza do codebook.
-          </strong>{' '}
-          Quando avaliadores divergem, isso indica que alguma definição ou critério
-          está ambíguo, e o codebook precisa ser refinado.
+        <div className="rounded-card border border-line px-[18px] py-4">
+          <div className="mb-3">
+            <b className="block text-[15px]">Critérios</b>
+            <span className="text-[13px] text-muted">
+              Como os avaliadores julgam cada resposta
+            </span>
+          </div>
+          <div className="mb-1 text-[13px] font-semibold">Clareza</div>
+          {CRITERION_LEVELS.map((level) => (
+            <div
+              key={level.label}
+              className="grid grid-cols-[auto_52px_1fr] items-center gap-2.5 py-1 text-[13px]"
+            >
+              <Levels filled={level.level} />
+              <b className="font-medium">{level.label}</b>
+              <span className="text-label">{level.text}</span>
+            </div>
+          ))}
         </div>
       </div>
+      <p className="mt-3.5 mb-0 text-center text-[13px] text-muted">
+        Se os avaliadores discordam, alguma definição ou critério está ambíguo e o codebook
+        precisa ser ajustado.
+      </p>
 
-      <div className="phase-diagram">
-        <div className="phase-diagram-label">As quatro fases do processo</div>
-        <div className="phase-row">
-          <div className="phase-card phase-1">
-            <div className="phase-card-head">
-              <div className="phase-num-tag">Fase 1</div>
-              <div className="phase-card-name">{PROJECT_PHASES[0].name}</div>
-            </div>
-            <div className="phase-card-body">
-              <ul className="phase-acts">
-                <li>Escrever um prompt inicial (pode ser simples)</li>
-                <li>Selecionar dados de teste representativos</li>
-                <li>Configurar o codebook inicial</li>
-              </ul>
-              <div className="phase-outcome">✓ Pipeline configurado</div>
-            </div>
-          </div>
+      <SectionHeading>Em quatro fases</SectionHeading>
+      <ol className="m-0 grid list-none gap-3 p-0 @xl:grid-cols-4">
+        {PROJECT_PHASES.map((phase, i) => {
+          const step = PHASE_STEPS[i]
+          return (
+            <li
+              key={phase.name}
+              className={cx(
+                'flex flex-col gap-1 rounded-card border p-4',
+                step.repeat ? 'border-transparent bg-brand-tint' : 'border-line',
+              )}
+            >
+              <span className="mb-1.5 grid h-7 w-7 place-items-center rounded-full border-[1.5px] border-brand bg-surface text-[13px] font-bold text-brand">
+                {i + 1}
+              </span>
+              <b className="text-sm">{phase.name}</b>
+              <span className="text-[13px] text-label">{step.text}</span>
+              {step.repeat ? (
+                <span className="mt-auto flex items-center gap-1.5 pt-2 text-xs text-brand">
+                  <RepeatIcon />
+                  {step.repeat}
+                </span>
+              ) : null}
+            </li>
+          )
+        })}
+      </ol>
 
-          <div className="phase-arrow-col">→</div>
-
-          <div className="phase-card phase-2">
-            <div className="phase-card-head">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                <div className="phase-num-tag" style={{ marginBottom: 0 }}>Fase 2</div>
-                <span className="loop-tag" style={{ marginTop: 0 }}>↺ iterativo</span>
-              </div>
-              <div className="phase-card-name">{PROJECT_PHASES[1].name}</div>
-            </div>
-            <div className="phase-card-body">
-              <ul className="phase-acts">
-                <li>Avaliadores aplicam o codebook de forma independente</li>
-                <li>
-                  Calcular{' '}
-                  <span data-tooltip="ICR: estima, descontado o acaso, se os avaliadores interpretaram o codebook da mesma forma. ICR baixo significa que alguma definição ou critério precisa ser refinado, não necessariamente que a LLM errou.">
-                    concordância e confiabilidade (ICR)
-                  </span>
-                </li>
-                <li>Se baixa: discutir divergências e refinar o codebook</li>
-              </ul>
-              <div className="phase-outcome">✓ Codebook validado</div>
-            </div>
-          </div>
-
-          <div className="phase-arrow-col">→</div>
-
-          <div className="phase-card phase-3">
-            <div className="phase-card-head">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                <div className="phase-num-tag" style={{ marginBottom: 0 }}>Fase 3</div>
-                <span className="loop-tag" style={{ marginTop: 0 }}>↺ iterativo</span>
-              </div>
-              <div className="phase-card-name">{PROJECT_PHASES[2].name}</div>
-            </div>
-            <div className="phase-card-body">
-              <ul className="phase-acts">
-                <li>Codebook incorporado ao prompt como contexto</li>
-                <li>Avaliadores julgam a qualidade das respostas pelos critérios</li>
-                <li>Confiabilidade baixa → refinar codebook e repetir</li>
-                <li>Confiabilidade alta, qualidade insatisfatória → ajustar prompt e repetir</li>
-              </ul>
-              <div className="phase-outcome">✓ Prompt validado</div>
-            </div>
-          </div>
-
-          <div className="phase-arrow-col">→</div>
-
-          <div className="phase-card phase-4">
-            <div className="phase-card-head">
-              <div className="phase-num-tag">Fase 4</div>
-              <div className="phase-card-name">{PROJECT_PHASES[3].name}</div>
-            </div>
-            <div className="phase-card-body">
-              <ul className="phase-acts">
-                <li>Itens novos e avaliadores novos, com codebook e prompt congelados</li>
-                <li>Comparação com a rodada de referência da Fase 3</li>
-              </ul>
-              <div className="phase-outcome">✓ Pipeline validado</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="why-section">
-        <div className="subsection-title">Por que esse processo?</div>
-        <div className="why-points">
-          <div className="why-point">
-            <div className="why-icon">🔬</div>
-            <div className="why-title">Reduz viés e subjetividade</div>
-            <p>
-              Múltiplos avaliadores com critérios objetivos contrabalanceiam
-              perspectivas individuais, e o resultado depende muito menos de uma
-              única visão.
-            </p>
-          </div>
-          <div className="why-point">
-            <div className="why-icon">📂</div>
-            <div className="why-title">Aumenta a replicabilidade</div>
-            <p>
-              A documentação das deliberações torna o processo verificável e evita
-              o loop em que um único pesquisador ajusta o prompt até obter o
-              resultado que espera.
-            </p>
-          </div>
-          <div className="why-point">
-            <div className="why-icon">💡</div>
-            <div className="why-title">Gera conhecimento sobre a tarefa</div>
-            <p>
-              O processo aprofunda o entendimento sobre o problema em si, não
-              apenas produz um prompt confiável.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="reference">
-        Baseado em: Shah, C. (2025). From Prompt Engineering to Prompt Science with
-        Humans in the Loop. <em>Communications of the ACM</em>, Vol. 68, No. 6, pp.
-        54–61. DOI: 10.1145/3709599
-      </div>
+      <p className="mt-12 mb-0 text-center text-xs text-muted">
+        Shah, C. (2025). From Prompt Engineering to Prompt Science with Humans in the Loop.{' '}
+        <em>Communications of the ACM</em>, 68(6), 54–61.
+      </p>
     </>
   )
 }
