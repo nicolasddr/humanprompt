@@ -29,9 +29,9 @@ const SAMPLE_GRADES = [
 ]
 
 const CRITERION_LEVELS = [
-  { level: 3, label: 'Alto', text: 'Dá para entender sem ler o código' },
-  { level: 2, label: 'Médio', text: 'Entende com algum esforço' },
-  { level: 1, label: 'Baixo', text: 'Não dá para entender' },
+  { level: 3, label: 'Alto', text: 'A resposta atende ao critério' },
+  { level: 2, label: 'Médio', text: 'Atende em parte' },
+  { level: 1, label: 'Baixo', text: 'Não atende' },
 ]
 
 export function ProcessOverview({
@@ -50,7 +50,7 @@ export function ProcessOverview({
           </Title>
           <p className={cx('m-0 text-base text-label @xl:text-[17px]', action ? 'mb-[22px]' : null)}>
             Esta ferramenta implementa o processo proposto por Shah (2025) em{' '}
-            <em>From Prompt Engineering to Prompt Science</em>.
+            <em>From Prompt Engineering to Prompt Science with Humans in the Loop</em>.
           </p>
           {action ? <div>{action}</div> : null}
         </div>
@@ -156,36 +156,32 @@ function ProcessGuide() {
     <>
       <SectionHeading>O codebook</SectionHeading>
       <p className="mx-auto mt-0 mb-[18px] max-w-[520px] text-center text-muted">
-        O documento que a LLM e os avaliadores seguem. Tem duas partes; no exemplo, para
-        gerar mensagens de commit:
+        O documento que a LLM e os avaliadores seguem. Tem duas partes:
       </p>
       <div className="grid gap-4 @xl:grid-cols-2">
-        <div className="rounded-card border border-line px-[18px] py-4">
+        <div className="rounded-card border border-line bg-surface px-[18px] py-4">
           <div className="mb-3">
             <b className="block text-[15px]">Definições</b>
             <span className="text-[13px] text-muted">O que a LLM deve produzir</span>
           </div>
-          {[
-            ['Título', 'Resume a mudança em uma linha'],
-            ['Corpo', 'Explica por que a mudança foi feita'],
-          ].map(([name, text]) => (
+          {['Definição 1', 'Definição 2'].map((name) => (
             <div
               key={name}
-              className="mt-1.5 grid grid-cols-[56px_1fr] gap-2.5 rounded-lg bg-canvas px-2.5 py-2 text-[13px]"
+              className="mt-1.5 grid grid-cols-[84px_1fr] gap-2.5 rounded-lg bg-canvas px-2.5 py-2 text-[13px]"
             >
               <b>{name}</b>
-              <span className="text-label">{text}</span>
+              <span className="text-label">O que significa, com precisão</span>
             </div>
           ))}
         </div>
-        <div className="rounded-card border border-line px-[18px] py-4">
+        <div className="rounded-card border border-line bg-surface px-[18px] py-4">
           <div className="mb-3">
             <b className="block text-[15px]">Critérios</b>
             <span className="text-[13px] text-muted">
               Como os avaliadores julgam cada resposta
             </span>
           </div>
-          <div className="mb-1 text-[13px] font-semibold">Clareza</div>
+          <div className="mb-1 text-[13px] font-semibold">Critério 1</div>
           {CRITERION_LEVELS.map((level) => (
             <div
               key={level.label}
@@ -212,7 +208,7 @@ function ProcessGuide() {
               key={phase.name}
               className={cx(
                 'flex flex-col gap-1 rounded-card border p-4',
-                step.repeat ? 'border-transparent bg-brand-tint' : 'border-line',
+                step.repeat ? 'border-transparent bg-brand-tint' : 'border-line bg-surface',
               )}
             >
               <span className="mb-1.5 grid h-7 w-7 place-items-center rounded-full border-[1.5px] border-brand bg-surface text-[13px] font-bold text-brand">
